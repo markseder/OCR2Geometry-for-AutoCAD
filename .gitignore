@@ -1,0 +1,24 @@
+# Visual Studio
+.vs/
+*.user
+*.suo
+
+# Build output
+bin/
+obj/
+[Bb]in/
+[Oo]bj/
+
+# NuGet
+packages/
+*.nupkg
+
+# AutoCAD / local test artifacts
+*.bak
+*.sv$
+*.dwl
+*.dwl2
+
+# OS files
+Thumbs.db
+.DS_Store
