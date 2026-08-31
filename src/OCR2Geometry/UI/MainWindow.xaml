@@ -1,0 +1,43 @@
+<Window x:Class="OCR2Geometry.UI.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="OCR2Geometry for AutoCAD"
+        Height="360"
+        Width="560"
+        ResizeMode="CanMinimize"
+        WindowStartupLocation="CenterOwner">
+    <Grid Margin="18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="OCR2Geometry"
+                   FontSize="26"
+                   FontWeight="SemiBold" />
+
+        <TextBlock Grid.Row="1"
+                   Margin="0,6,0,16"
+                   Text="AutoCAD 2020 development build — geometry bootstrap"
+                   Foreground="Gray" />
+
+        <Border Grid.Row="2" BorderBrush="#CCCCCC" BorderThickness="1" Padding="12">
+            <StackPanel>
+                <TextBlock Text="Test coordinates" FontWeight="SemiBold" Margin="0,0,0,8" />
+                <TextBlock FontFamily="Consolas" Text="1    512345.23    6876543.11" />
+                <TextBlock FontFamily="Consolas" Text="2    512351.86    6876551.42" />
+                <TextBlock FontFamily="Consolas" Text="3    512360.14    6876567.30" />
+                <TextBlock Margin="0,14,0,0"
+                           TextWrapping="Wrap"
+                           Text="This bootstrap build creates three DBPoint objects and point-number DBText labels in Model Space." />
+            </StackPanel>
+        </Border>
+
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+            <Button Width="150" Height="34" Margin="0,0,8,0" Content="Create test points" Click="CreateTestPoints_Click" />
+            <Button Width="90" Height="34" Content="Close" IsCancel="True" />
+        </StackPanel>
+    </Grid>
+</Window>
