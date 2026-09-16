@@ -3,9 +3,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="OCR2Geometry for AutoCAD"
         Height="700"
-        Width="1000"
+        Width="1060"
         MinHeight="620"
-        MinWidth="880"
+        MinWidth="920"
         WindowStartupLocation="CenterOwner">
     <Grid Margin="18">
         <Grid.RowDefinitions>
@@ -23,7 +23,7 @@
 
         <TextBlock Grid.Row="1"
                    Margin="0,6,0,12"
-                   Text="AutoCAD 2020 — image/OCR foundation v0.4"
+                   Text="AutoCAD 2020 — local OCR v0.4 (no Python)"
                    Foreground="Gray" />
 
         <Grid Grid.Row="2" Margin="0,0,0,12">
@@ -35,6 +35,7 @@
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
@@ -42,11 +43,13 @@
 
                 <Button Grid.Column="0" Width="120" Height="32" Margin="0,0,8,0"
                         Content="Select image" Click="SelectImage_Click" />
-                <TextBox Grid.Column="1" x:Name="SelectedImageTextBox" Height="28"
+                <Button Grid.Column="1" Width="120" Height="32" Margin="0,0,8,0"
+                        Content="Paste image" Click="PasteImage_Click" />
+                <TextBox Grid.Column="2" x:Name="SelectedImageTextBox" Height="28"
                          IsReadOnly="True" VerticalContentAlignment="Center" Margin="0,0,8,0" />
-                <Button Grid.Column="2" Width="110" Height="32" Margin="0,0,8,0"
+                <Button Grid.Column="3" Width="110" Height="32" Margin="0,0,8,0"
                         Content="Preview image" Click="PreviewImage_Click" IsEnabled="False" x:Name="PreviewImageButton" />
-                <Button Grid.Column="3" Width="120" Height="32"
+                <Button Grid.Column="4" Width="120" Height="32"
                         Content="Recognize OCR" Click="RecognizeImage_Click" IsEnabled="False" x:Name="RecognizeImageButton" />
             </Grid>
 
@@ -94,8 +97,11 @@
                 <Grid>
                     <Image x:Name="ImagePreview" Stretch="Uniform" Margin="8" />
                     <TextBlock x:Name="PreviewPlaceholder"
-                               Text="Select an image to preview"
+                               Text="Select an image or use Win+Shift+S, then Paste image"
+                               TextWrapping="Wrap"
+                               TextAlignment="Center"
                                Foreground="Gray"
+                               Margin="20"
                                HorizontalAlignment="Center"
                                VerticalAlignment="Center" />
                 </Grid>
