@@ -4,16 +4,21 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Windows;
+using System.Windows.Media.Imaging;
 using Microsoft.Win32;
 using OCR2Geometry.AutoCAD;
 using OCR2Geometry.Export;
 using OCR2Geometry.Import;
 using OCR2Geometry.Models;
+using OCR2Geometry.OCR;
 
 namespace OCR2Geometry.UI
 {
     public partial class MainWindow : Window
     {
+        private readonly IOcrEngine _ocrEngine;
+        private string _selectedImagePath;
+
         public ObservableCollection<CoordinatePoint> Points { get; }
 
         public MainWindow()
@@ -25,8 +30,98 @@ namespace OCR2Geometry.UI
                 new CoordinatePoint(3, 512360.14, 6876567.30)
             };
 
+            _ocrEngine = new UnavailableOcrEngine();
+
             InitializeComponent();
             DataContext = this;
+        }
+
+        private void SelectImage_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new OpenFileDialog
+            {
+                Title = "Select coordinate table image",
+                Filter = "Image files (*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff)|*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff|All files (*.*)|*.*"
+            };
+
+            if (dialog.ShowDialog(this) != true)
+            {
+                return;
+            }
+
+            _selectedImagePath = dialog.FileName;
+            SelectedImageTextBox.Text = _selectedImagePath;
+            PreviewImageButton.IsEnabled = true;
+            RecognizeImageButton.IsEnabled = true;
+
+            LoadImagePreview(_selectedImagePath);
+            ImportStatusText.Text = "Image selected: " + Path.GetFileName(_selectedImagePath);
+        }
+
+        private void PreviewImage_Click(object sender, RoutedEventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(_selectedImagePath) || !File.Exists(_selectedImagePath))
+            {
+                ShowError("Select an image first.");
+                return;
+            }
+
+            LoadImagePreview(_selectedImagePath);
+        }
+
+        private void RecognizeImage_Click(object sender, RoutedEventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(_selectedImagePath) || !File.Exists(_selectedImagePath))
+            {
+                ShowError("Select an image first.");
+                return;
+            }
+
+            if (!_ocrEngine.IsAvailable)
+            {
+                ShowError(
+                    "Image selection and preview are working. " +
+                    "The local OCR engine is the next v0.4 step and is not connected in this build yet.");
+                return;
+            }
+
+            try
+            {
+                var result = _ocrEngine.Recognize(_selectedImagePath);
+                if (string.IsNullOrWhiteSpace(result.Text))
+                {
+                    ShowError("OCR did not return any text.");
+                    return;
+                }
+
+                ImportCoordinateText(result.Text, Path.GetFileName(_selectedImagePath) + " / " + result.EngineName);
+            }
+            catch (Exception ex)
+            {
+                ShowError(ex.Message);
+            }
+        }
+
+        private void LoadImagePreview(string imagePath)
+        {
+            try
+            {
+                var bitmap = new BitmapImage();
+                bitmap.BeginInit();
+                bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                bitmap.UriSource = new Uri(imagePath, UriKind.Absolute);
+                bitmap.EndInit();
+                bitmap.Freeze();
+
+                ImagePreview.Source = bitmap;
+                PreviewPlaceholder.Visibility = Visibility.Collapsed;
+            }
+            catch (Exception ex)
+            {
+                ImagePreview.Source = null;
+                PreviewPlaceholder.Visibility = Visibility.Visible;
+                ShowError("Could not preview the selected image: " + ex.Message);
+            }
         }
 
         private void PasteCoordinates_Click(object sender, RoutedEventArgs e)
@@ -90,8 +185,6 @@ namespace OCR2Geometry.UI
                 Points.Add(point);
             }
 
-            // Preserve point numbers explicitly present in imported CSV/TXT data.
-            // Start number is only used by the parser for rows that do not include a point number.
             PointsGrid.Items.Refresh();
 
             if (result.InvalidLineNumbers.Count > 0)
