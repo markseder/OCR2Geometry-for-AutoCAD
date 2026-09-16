@@ -1,11 +1,13 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Windows;
 using Microsoft.Win32;
 using OCR2Geometry.AutoCAD;
 using OCR2Geometry.Export;
+using OCR2Geometry.Import;
 using OCR2Geometry.Models;
 
 namespace OCR2Geometry.UI
@@ -25,6 +27,85 @@ namespace OCR2Geometry.UI
 
             InitializeComponent();
             DataContext = this;
+        }
+
+        private void PasteCoordinates_Click(object sender, RoutedEventArgs e)
+        {
+            if (!Clipboard.ContainsText())
+            {
+                ShowError("Clipboard does not contain text.");
+                return;
+            }
+
+            ImportCoordinateText(Clipboard.GetText(), "clipboard");
+        }
+
+        private void ImportTextFile_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new OpenFileDialog
+            {
+                Title = "Import coordinates",
+                Filter = "Coordinate files (*.csv;*.txt)|*.csv;*.txt|CSV files (*.csv)|*.csv|Text files (*.txt)|*.txt|All files (*.*)|*.*"
+            };
+
+            if (dialog.ShowDialog(this) != true)
+            {
+                return;
+            }
+
+            try
+            {
+                ImportCoordinateText(File.ReadAllText(dialog.FileName), Path.GetFileName(dialog.FileName));
+            }
+            catch (Exception ex)
+            {
+                ShowError(ex.Message);
+            }
+        }
+
+        private void ClearTable_Click(object sender, RoutedEventArgs e)
+        {
+            Points.Clear();
+            ImportStatusText.Text = "Table cleared";
+        }
+
+        private void ImportCoordinateText(string text, string sourceName)
+        {
+            int startNumber;
+            if (!TryGetStartNumber(out startNumber))
+            {
+                return;
+            }
+
+            var result = TextCoordinateParser.Parse(text, startNumber);
+            if (result.Points.Count == 0)
+            {
+                ShowError("No coordinate rows were recognized in " + sourceName + ".");
+                return;
+            }
+
+            Points.Clear();
+            foreach (var point in result.Points)
+            {
+                Points.Add(point);
+            }
+
+            RenumberPoints(startNumber);
+
+            if (result.InvalidLineNumbers.Count > 0)
+            {
+                var preview = string.Join(", ", result.InvalidLineNumbers.Take(8));
+                if (result.InvalidLineNumbers.Count > 8)
+                {
+                    preview += ", ...";
+                }
+
+                ImportStatusText.Text = Points.Count + " imported; skipped lines: " + preview;
+            }
+            else
+            {
+                ImportStatusText.Text = Points.Count + " coordinate rows imported from " + sourceName;
+            }
         }
 
         private void AddRow_Click(object sender, RoutedEventArgs e)
