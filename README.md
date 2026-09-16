@@ -4,7 +4,7 @@ OCR2Geometry for AutoCAD is a lightweight AutoCAD plugin that converts coordinat
 
 The first target is **AutoCAD 2020**, using **C# / .NET Framework / WPF**.
 
-## Current development build — v0.4 foundation
+## Current development build — v0.4 local OCR
 
 Already working and validated in AutoCAD 2020:
 
@@ -24,11 +24,13 @@ Already working and validated in AutoCAD 2020:
 New in the v0.4 development branch:
 
 - select PNG/JPG/JPEG/BMP/TIF/TIFF image
-- preview the selected image inside the plugin
-- OCR engine abstraction (`IOcrEngine`)
-- OCR result model ready to feed recognized text into the existing coordinate parser
-
-The actual local OCR engine adapter is the next step inside v0.4. The AutoCAD geometry and coordinate parser no longer need to know which OCR engine is used.
+- paste an image directly from the Windows clipboard
+- intended workflow: `Win+Shift+S` -> capture table -> **Paste image**
+- preview the selected/pasted image inside the plugin
+- local OCR using Tesseract 5 through a .NET package
+- no Python, pip, virtual environment or external Python process
+- recognized OCR text is passed into the existing coordinate parser
+- first OCR run downloads `eng.traineddata` once into `%LOCALAPPDATA%\OCR2Geometry\tessdata`
 
 ## Build requirements
 
@@ -36,6 +38,7 @@ The actual local OCR engine adapter is the next step inside v0.4. The AutoCAD ge
 - AutoCAD 2020 installed
 - Visual Studio with .NET desktop development tools
 - .NET Framework 4.7.2 targeting pack
+- NuGet package restore enabled
 
 The project expects the AutoCAD managed API assemblies in:
 
@@ -45,15 +48,20 @@ C:\Program Files\Autodesk\AutoCAD 2020\acmgd.dll
 C:\Program Files\Autodesk\AutoCAD 2020\accoremgd.dll
 ```
 
-## Build and test
+## Build and test v0.4
 
 1. Open `OCR2Geometry.sln` in Visual Studio.
-2. Build the solution.
+2. Build the solution. Visual Studio should restore the `Tesseract` NuGet package automatically.
 3. In AutoCAD 2020 run `NETLOAD` and load the built `OCR2Geometry.dll`.
 4. Run `OCR2GEOMETRY`.
-5. Click **Select image** and choose a coordinate-table screenshot.
-6. Verify the preview appears in the right-hand panel.
-7. Verify existing clipboard/CSV import and point creation still work.
+5. Press `Win+Shift+S` and capture only the coordinate table.
+6. Click **Paste image** and verify the preview appears.
+7. Click **Recognize OCR**.
+8. On the first OCR run, allow the plugin to download the English Tesseract language model once.
+9. Verify recognized coordinate rows populate the table.
+10. Correct any OCR mistakes manually, then use **Create points**.
+
+You can still use **Select image** for saved screenshots/photos and all v0.3 CSV/TXT/clipboard-text workflows remain available.
 
 ## Development stages
 
@@ -90,17 +98,21 @@ C:\Program Files\Autodesk\AutoCAD 2020\accoremgd.dll
 
 - [x] Image selection
 - [x] Image preview
+- [x] Paste image from clipboard
 - [x] OCR engine abstraction
-- [ ] Local OCR engine adapter
-- [ ] Feed OCR text into the coordinate parser
+- [x] Local .NET Tesseract OCR adapter
+- [x] Feed OCR text into the coordinate parser
+- [ ] Validate OCR quality on real coordinate-table screenshots
 - [ ] Recognition confidence / validation workflow
 
 ### Later improvements
 
+- [ ] Bundle/fallback language data for fully offline first launch
+- [ ] OCR preprocessing for low-contrast/scanned tables
 - [ ] User-defined text offset
 - [ ] Improved AutoCAD layer/settings workflow
 - [ ] Support additional AutoCAD versions
 
 ## Status
 
-Active development. v0.3 is merged into `main`; v0.4 image/OCR work is in progress.
+Active development. v0.3 is merged into `main`; v0.4 local OCR is ready for build and real-table testing before merge.
