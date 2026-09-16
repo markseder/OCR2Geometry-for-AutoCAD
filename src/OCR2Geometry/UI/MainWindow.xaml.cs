@@ -30,7 +30,7 @@ namespace OCR2Geometry.UI
                 new CoordinatePoint(3, 512360.14, 6876567.30)
             };
 
-            _ocrEngine = new UnavailableOcrEngine();
+            _ocrEngine = new TesseractOcrEngine();
 
             InitializeComponent();
             DataContext = this;
@@ -49,20 +49,60 @@ namespace OCR2Geometry.UI
                 return;
             }
 
-            _selectedImagePath = dialog.FileName;
-            SelectedImageTextBox.Text = _selectedImagePath;
+            SetSelectedImage(dialog.FileName, "Image selected: " + Path.GetFileName(dialog.FileName));
+        }
+
+        private void PasteImage_Click(object sender, RoutedEventArgs e)
+        {
+            if (!Clipboard.ContainsImage())
+            {
+                ShowError("Clipboard does not contain an image. Use Win+Shift+S to capture the table, then click Paste image.");
+                return;
+            }
+
+            try
+            {
+                var image = Clipboard.GetImage();
+                if (image == null)
+                {
+                    ShowError("Could not read the image from the clipboard.");
+                    return;
+                }
+
+                var tempDirectory = Path.Combine(Path.GetTempPath(), "OCR2Geometry");
+                Directory.CreateDirectory(tempDirectory);
+                var tempPath = Path.Combine(tempDirectory, "clipboard_" + DateTime.Now.ToString("yyyyMMdd_HHmmss_fff") + ".png");
+
+                var encoder = new PngBitmapEncoder();
+                encoder.Frames.Add(BitmapFrame.Create(image));
+                using (var stream = File.Create(tempPath))
+                {
+                    encoder.Save(stream);
+                }
+
+                SetSelectedImage(tempPath, "Image pasted from clipboard");
+            }
+            catch (Exception ex)
+            {
+                ShowError("Could not paste the clipboard image: " + ex.Message);
+            }
+        }
+
+        private void SetSelectedImage(string imagePath, string status)
+        {
+            _selectedImagePath = imagePath;
+            SelectedImageTextBox.Text = imagePath;
             PreviewImageButton.IsEnabled = true;
             RecognizeImageButton.IsEnabled = true;
-
-            LoadImagePreview(_selectedImagePath);
-            ImportStatusText.Text = "Image selected: " + Path.GetFileName(_selectedImagePath);
+            LoadImagePreview(imagePath);
+            ImportStatusText.Text = status;
         }
 
         private void PreviewImage_Click(object sender, RoutedEventArgs e)
         {
             if (string.IsNullOrWhiteSpace(_selectedImagePath) || !File.Exists(_selectedImagePath))
             {
-                ShowError("Select an image first.");
+                ShowError("Select or paste an image first.");
                 return;
             }
 
@@ -73,24 +113,24 @@ namespace OCR2Geometry.UI
         {
             if (string.IsNullOrWhiteSpace(_selectedImagePath) || !File.Exists(_selectedImagePath))
             {
-                ShowError("Select an image first.");
+                ShowError("Select or paste an image first.");
                 return;
             }
 
             if (!_ocrEngine.IsAvailable)
             {
-                ShowError(
-                    "Image selection and preview are working. " +
-                    "The local OCR engine is the next v0.4 step and is not connected in this build yet.");
+                ShowError("The local OCR engine is not available.");
                 return;
             }
 
             try
             {
+                ImportStatusText.Text = "Recognizing image with " + _ocrEngine.Name + "...";
                 var result = _ocrEngine.Recognize(_selectedImagePath);
                 if (string.IsNullOrWhiteSpace(result.Text))
                 {
                     ShowError("OCR did not return any text.");
+                    ImportStatusText.Text = "OCR returned no text";
                     return;
                 }
 
@@ -99,6 +139,7 @@ namespace OCR2Geometry.UI
             catch (Exception ex)
             {
                 ShowError(ex.Message);
+                ImportStatusText.Text = "OCR failed";
             }
         }
 
