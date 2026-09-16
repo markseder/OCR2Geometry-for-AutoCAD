@@ -1,22 +1,23 @@
 # OCR2Geometry for AutoCAD
 
-OCR2Geometry for AutoCAD is a lightweight AutoCAD plugin that converts coordinate tables from images into drawing geometry.
+OCR2Geometry for AutoCAD is a lightweight AutoCAD plugin that converts coordinate tables from text, files, and eventually images into drawing geometry.
 
 The first target is **AutoCAD 2020**, using **C# / .NET Framework / WPF**.
 
 ## MVP scope
 
-- Recognize planar coordinate tables from images
-- Work with X/Y coordinates only
+- Work with planar X/Y coordinates
+- Review and edit values before import
 - Swap X and Y columns
-- Review and edit recognized values before import
 - Create AutoCAD `DBPoint` objects
 - Add point-number `DBText` labels next to points
+- Import coordinates from clipboard / CSV / TXT
 - Export coordinates to CSV
+- OCR from images in a later stage
 
 No latitude/longitude or coordinate-system transformation is planned for the first MVP.
 
-## Current development build — v0.2
+## Current development build — v0.3
 
 The current development branch contains:
 
@@ -29,6 +30,10 @@ The current development branch contains:
 - creation of `DBPoint` objects in Model Space
 - creation of point-number `DBText` labels
 - CSV export with `Point,X,Y` columns
+- paste coordinate text from clipboard
+- import coordinate rows from CSV/TXT
+- parsing of tab, semicolon, whitespace and plugin CSV formats
+- skipped-line reporting for unrecognized text rows
 
 Three sample coordinates are preloaded for quick testing:
 
@@ -60,21 +65,22 @@ AutoCAD references use `Copy Local = False` so Autodesk DLLs are not copied into
 ## Build and test
 
 1. Open `OCR2Geometry.sln` in Visual Studio.
-2. Build the solution in `Debug` or `Release` mode.
+2. Build the solution.
 3. Start AutoCAD 2020.
-4. Run `NETLOAD`.
-5. Select the built `OCR2Geometry.dll`, normally from:
+4. Run `NETLOAD` and load `OCR2Geometry.dll`.
+5. Run `OCR2GEOMETRY`.
+6. Test **Paste coordinates** using copied rows such as:
 
 ```text
-src\OCR2Geometry\bin\Debug\OCR2Geometry.dll
+1 512345.23 6876543.11
+2 512351.86 6876551.42
+3 512360.14 6876567.30
 ```
 
-6. Run `OCR2GEOMETRY`.
-7. Edit/add/delete coordinate rows as required.
-8. Test `Swap X/Y`.
-9. Set a start number and text height.
-10. Click **Create points** and verify points/labels in Model Space.
-11. Click **Export CSV** and verify the saved coordinate table.
+7. Test **Import CSV/TXT** using a CSV exported by the plugin.
+8. Verify add/delete, `Swap X/Y`, start number and text height.
+9. Click **Create points** and verify geometry/labels in Model Space.
+10. Export CSV and verify the resulting file.
 
 ## Development stages
 
@@ -96,13 +102,22 @@ src\OCR2Geometry\bin\Debug\OCR2Geometry.dll
 - [x] X/Y swap
 - [x] Create points from the edited table
 - [x] CSV export
-- [ ] Validate v0.2 build in AutoCAD 2020
+- [x] Validated in AutoCAD 2020
 
-### v0.3 — OCR foundation
+### v0.3 — Import and validation foundation
+
+- [x] Clipboard text import
+- [x] CSV/TXT import
+- [x] Coordinate text parser
+- [x] Invalid-line reporting
+- [ ] Validate v0.3 build in AutoCAD 2020
+
+### v0.4 — OCR
 
 - [ ] Image selection
+- [ ] Image preview
 - [ ] OCR engine integration
-- [ ] Coordinate table parser
+- [ ] Feed recognized text into the existing coordinate parser
 - [ ] Recognition confidence / validation workflow
 
 ### Later improvements
@@ -121,6 +136,7 @@ OCR2Geometry-for-AutoCAD/
 │       ├── AutoCAD/
 │       ├── Commands/
 │       ├── Export/
+│       ├── Import/
 │       ├── Models/
 │       ├── Properties/
 │       ├── UI/
@@ -130,4 +146,4 @@ OCR2Geometry-for-AutoCAD/
 
 ## Status
 
-Active development. v0.1 has been validated in AutoCAD 2020; v0.2 is ready for local build/testing before merge to `main`.
+Active development. v0.1 and v0.2 have been validated in AutoCAD 2020. v0.3 is ready for local build/testing before merge to `main`.
