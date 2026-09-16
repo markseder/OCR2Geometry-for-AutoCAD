@@ -1,11 +1,13 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Windows;
 using Microsoft.Win32;
 using OCR2Geometry.AutoCAD;
 using OCR2Geometry.Export;
+using OCR2Geometry.Import;
 using OCR2Geometry.Models;
 
 namespace OCR2Geometry.UI
@@ -27,6 +29,87 @@ namespace OCR2Geometry.UI
             DataContext = this;
         }
 
+        private void PasteCoordinates_Click(object sender, RoutedEventArgs e)
+        {
+            if (!Clipboard.ContainsText())
+            {
+                ShowError("Clipboard does not contain text.");
+                return;
+            }
+
+            ImportCoordinateText(Clipboard.GetText(), "clipboard");
+        }
+
+        private void ImportTextFile_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new OpenFileDialog
+            {
+                Title = "Import coordinates",
+                Filter = "Coordinate files (*.csv;*.txt)|*.csv;*.txt|CSV files (*.csv)|*.csv|Text files (*.txt)|*.txt|All files (*.*)|*.*"
+            };
+
+            if (dialog.ShowDialog(this) != true)
+            {
+                return;
+            }
+
+            try
+            {
+                ImportCoordinateText(File.ReadAllText(dialog.FileName), Path.GetFileName(dialog.FileName));
+            }
+            catch (Exception ex)
+            {
+                ShowError(ex.Message);
+            }
+        }
+
+        private void ClearTable_Click(object sender, RoutedEventArgs e)
+        {
+            Points.Clear();
+            ImportStatusText.Text = "Table cleared";
+        }
+
+        private void ImportCoordinateText(string text, string sourceName)
+        {
+            int startNumber;
+            if (!TryGetStartNumber(out startNumber))
+            {
+                return;
+            }
+
+            var result = TextCoordinateParser.Parse(text, startNumber);
+            if (result.Points.Count == 0)
+            {
+                ShowError("No coordinate rows were recognized in " + sourceName + ".");
+                return;
+            }
+
+            Points.Clear();
+            foreach (var point in result.Points)
+            {
+                Points.Add(point);
+            }
+
+            // Preserve point numbers explicitly present in imported CSV/TXT data.
+            // Start number is only used by the parser for rows that do not include a point number.
+            PointsGrid.Items.Refresh();
+
+            if (result.InvalidLineNumbers.Count > 0)
+            {
+                var preview = string.Join(", ", result.InvalidLineNumbers.Take(8));
+                if (result.InvalidLineNumbers.Count > 8)
+                {
+                    preview += ", ...";
+                }
+
+                ImportStatusText.Text = Points.Count + " imported; skipped lines: " + preview;
+            }
+            else
+            {
+                ImportStatusText.Text = Points.Count + " coordinate rows imported from " + sourceName;
+            }
+        }
+
         private void AddRow_Click(object sender, RoutedEventArgs e)
         {
             int startNumber;
@@ -35,8 +118,8 @@ namespace OCR2Geometry.UI
                 return;
             }
 
-            Points.Add(new CoordinatePoint(startNumber + Points.Count, 0.0, 0.0));
-            RenumberPoints(startNumber);
+            Points.Add(new CoordinatePoint(GetNextPointNumber(startNumber), 0.0, 0.0));
+            PointsGrid.Items.Refresh();
         }
 
         private void DeleteSelected_Click(object sender, RoutedEventArgs e)
@@ -47,11 +130,7 @@ namespace OCR2Geometry.UI
                 Points.Remove(point);
             }
 
-            int startNumber;
-            if (TryGetStartNumber(out startNumber, false))
-            {
-                RenumberPoints(startNumber);
-            }
+            PointsGrid.Items.Refresh();
         }
 
         private void SwapXY_Click(object sender, RoutedEventArgs e)
@@ -78,20 +157,12 @@ namespace OCR2Geometry.UI
                 return;
             }
 
-            int startNumber;
-            if (!TryGetStartNumber(out startNumber))
-            {
-                return;
-            }
-
             double textHeight;
             if (!TryParsePositiveDouble(TextHeightTextBox.Text, out textHeight))
             {
                 ShowError("Text height must be a positive number.");
                 return;
             }
-
-            RenumberPoints(startNumber);
 
             try
             {
@@ -117,14 +188,6 @@ namespace OCR2Geometry.UI
                 ShowError("The coordinate table is empty.");
                 return;
             }
-
-            int startNumber;
-            if (!TryGetStartNumber(out startNumber))
-            {
-                return;
-            }
-
-            RenumberPoints(startNumber);
 
             var dialog = new SaveFileDialog
             {
@@ -176,6 +239,16 @@ namespace OCR2Geometry.UI
             return false;
         }
 
+        private int GetNextPointNumber(int startNumber)
+        {
+            if (Points.Count == 0)
+            {
+                return startNumber;
+            }
+
+            return Points.Max(p => p.Number) + 1;
+        }
+
         private static bool TryParsePositiveDouble(string value, out double result)
         {
             if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out result) && result > 0)
@@ -189,16 +262,6 @@ namespace OCR2Geometry.UI
             }
 
             return false;
-        }
-
-        private void RenumberPoints(int startNumber)
-        {
-            for (var i = 0; i < Points.Count; i++)
-            {
-                Points[i].Number = startNumber + i;
-            }
-
-            PointsGrid.Items.Refresh();
         }
 
         private static void ShowError(string message)
