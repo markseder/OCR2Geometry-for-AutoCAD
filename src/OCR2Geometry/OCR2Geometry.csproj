@@ -53,6 +53,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Tesseract" Version="5.2.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Include="Plugin.cs" />
     <Compile Include="Commands\OcrCommand.cs" />
     <Compile Include="AutoCAD\PointCreator.cs" />
@@ -61,6 +65,7 @@
     <Compile Include="Models\CoordinatePoint.cs" />
     <Compile Include="OCR\IOcrEngine.cs" />
     <Compile Include="OCR\OcrResult.cs" />
+    <Compile Include="OCR\TesseractOcrEngine.cs" />
     <Compile Include="OCR\UnavailableOcrEngine.cs" />
     <Compile Include="UI\MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
