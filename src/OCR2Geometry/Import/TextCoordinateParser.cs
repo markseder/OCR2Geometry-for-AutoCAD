@@ -42,8 +42,8 @@ namespace OCR2Geometry.Import
                     continue;
                 }
 
-                var matches = NumberRegex.Matches(line).Cast<Match>().Select(m => m.Value).ToList();
-                if (matches.Count < 2)
+                var values = ExtractValues(line);
+                if (values.Count < 2)
                 {
                     result.InvalidLineNumbers.Add(i + 1);
                     continue;
@@ -52,11 +52,11 @@ namespace OCR2Geometry.Import
                 double x;
                 double y;
                 int explicitNumber;
-                var hasExplicitNumber = matches.Count >= 3 && TryParseInt(matches[0], out explicitNumber);
+                var hasExplicitNumber = values.Count >= 3 && TryParseInt(values[0], out explicitNumber);
                 var xIndex = hasExplicitNumber ? 1 : 0;
                 var yIndex = hasExplicitNumber ? 2 : 1;
 
-                if (!TryParseDouble(matches[xIndex], out x) || !TryParseDouble(matches[yIndex], out y))
+                if (!TryParseDouble(values[xIndex], out x) || !TryParseDouble(values[yIndex], out y))
                 {
                     result.InvalidLineNumbers.Add(i + 1);
                     continue;
@@ -70,15 +70,46 @@ namespace OCR2Geometry.Import
             return result;
         }
 
+        private static List<string> ExtractValues(string line)
+        {
+            if (line.Contains("\t"))
+            {
+                return line.Split(new[] { '\t' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(v => v.Trim())
+                    .Where(v => v.Length > 0)
+                    .ToList();
+            }
+
+            if (line.Contains(";"))
+            {
+                return line.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(v => v.Trim())
+                    .Where(v => v.Length > 0)
+                    .ToList();
+            }
+
+            // CSV exported by this plugin uses commas as separators and dots as decimals.
+            if (line.Contains(",") && line.Contains("."))
+            {
+                return line.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(v => v.Trim())
+                    .Where(v => v.Length > 0)
+                    .ToList();
+            }
+
+            // Whitespace-separated text can use either decimal dots or decimal commas.
+            return NumberRegex.Matches(line).Cast<Match>().Select(m => m.Value).ToList();
+        }
+
         private static bool TryParseDouble(string value, out double result)
         {
-            var normalized = value.Replace(',', '.');
+            var normalized = value.Trim().Replace(',', '.');
             return double.TryParse(normalized, NumberStyles.Float, CultureInfo.InvariantCulture, out result);
         }
 
         private static bool TryParseInt(string value, out int result)
         {
-            return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out result);
+            return int.TryParse(value.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out result);
         }
     }
 }
