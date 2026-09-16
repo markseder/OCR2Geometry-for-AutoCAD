@@ -13,6 +13,7 @@
     <Deterministic>true</Deterministic>
     <PlatformTarget>x64</PlatformTarget>
     <Prefer32Bit>false</Prefer32Bit>
+    <RestoreProjectStyle>PackageReference</RestoreProjectStyle>
     <Acad2020Dir Condition="'$(Acad2020Dir)' == ''">C:\Program Files\Autodesk\AutoCAD 2020</Acad2020Dir>
   </PropertyGroup>
 
@@ -34,6 +35,7 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
     <Reference Include="System.Xaml" />
     <Reference Include="WindowsBase" />
     <Reference Include="PresentationCore" />
@@ -53,12 +55,19 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="RapidOCRLib" Version="0.9.5" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Include="Plugin.cs" />
     <Compile Include="Commands\OcrCommand.cs" />
     <Compile Include="AutoCAD\PointCreator.cs" />
     <Compile Include="Export\CsvExporter.cs" />
     <Compile Include="Import\TextCoordinateParser.cs" />
     <Compile Include="Models\CoordinatePoint.cs" />
+    <Compile Include="OCR\OcrLayoutTextBuilder.cs" />
+    <Compile Include="OCR\OcrModelManager.cs" />
+    <Compile Include="OCR\RapidOcrService.cs" />
     <Compile Include="UI\MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
     </Compile>
