@@ -51,7 +51,7 @@ namespace OCR2Geometry.Import
 
                 double x;
                 double y;
-                var explicitNumber = nextNumber;
+                var explicitNumber = 0;
                 var hasExplicitNumber = values.Count >= 3 && TryParseInt(values[0], out explicitNumber);
                 var xIndex = hasExplicitNumber ? 1 : 0;
                 var yIndex = hasExplicitNumber ? 2 : 1;
@@ -88,8 +88,11 @@ namespace OCR2Geometry.Import
                     .ToList();
             }
 
-            // CSV exported by this plugin uses commas as separators and dots as decimals.
-            if (line.Contains(",") && line.Contains("."))
+            // CSV exported by this plugin uses commas as separators. Treat any compact
+            // line with two or more commas and no whitespace as CSV, even when values
+            // are integers such as "102,0,0".
+            var commaCount = line.Count(c => c == ',');
+            if (commaCount >= 2 && !line.Any(char.IsWhiteSpace))
             {
                 return line.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
                     .Select(v => v.Trim())
