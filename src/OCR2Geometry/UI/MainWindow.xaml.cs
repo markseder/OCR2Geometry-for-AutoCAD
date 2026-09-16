@@ -90,7 +90,9 @@ namespace OCR2Geometry.UI
                 Points.Add(point);
             }
 
-            RenumberPoints(startNumber);
+            // Preserve point numbers explicitly present in imported CSV/TXT data.
+            // Start number is only used by the parser for rows that do not include a point number.
+            PointsGrid.Items.Refresh();
 
             if (result.InvalidLineNumbers.Count > 0)
             {
@@ -116,8 +118,8 @@ namespace OCR2Geometry.UI
                 return;
             }
 
-            Points.Add(new CoordinatePoint(startNumber + Points.Count, 0.0, 0.0));
-            RenumberPoints(startNumber);
+            Points.Add(new CoordinatePoint(GetNextPointNumber(startNumber), 0.0, 0.0));
+            PointsGrid.Items.Refresh();
         }
 
         private void DeleteSelected_Click(object sender, RoutedEventArgs e)
@@ -128,11 +130,7 @@ namespace OCR2Geometry.UI
                 Points.Remove(point);
             }
 
-            int startNumber;
-            if (TryGetStartNumber(out startNumber, false))
-            {
-                RenumberPoints(startNumber);
-            }
+            PointsGrid.Items.Refresh();
         }
 
         private void SwapXY_Click(object sender, RoutedEventArgs e)
@@ -159,20 +157,12 @@ namespace OCR2Geometry.UI
                 return;
             }
 
-            int startNumber;
-            if (!TryGetStartNumber(out startNumber))
-            {
-                return;
-            }
-
             double textHeight;
             if (!TryParsePositiveDouble(TextHeightTextBox.Text, out textHeight))
             {
                 ShowError("Text height must be a positive number.");
                 return;
             }
-
-            RenumberPoints(startNumber);
 
             try
             {
@@ -198,14 +188,6 @@ namespace OCR2Geometry.UI
                 ShowError("The coordinate table is empty.");
                 return;
             }
-
-            int startNumber;
-            if (!TryGetStartNumber(out startNumber))
-            {
-                return;
-            }
-
-            RenumberPoints(startNumber);
 
             var dialog = new SaveFileDialog
             {
@@ -257,6 +239,16 @@ namespace OCR2Geometry.UI
             return false;
         }
 
+        private int GetNextPointNumber(int startNumber)
+        {
+            if (Points.Count == 0)
+            {
+                return startNumber;
+            }
+
+            return Points.Max(p => p.Number) + 1;
+        }
+
         private static bool TryParsePositiveDouble(string value, out double result)
         {
             if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out result) && result > 0)
@@ -270,16 +262,6 @@ namespace OCR2Geometry.UI
             }
 
             return false;
-        }
-
-        private void RenumberPoints(int startNumber)
-        {
-            for (var i = 0; i < Points.Count; i++)
-            {
-                Points[i].Number = startNumber + i;
-            }
-
-            PointsGrid.Items.Refresh();
         }
 
         private static void ShowError(string message)
