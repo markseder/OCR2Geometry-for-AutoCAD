@@ -45,7 +45,7 @@
             </Grid.ColumnDefinitions>
 
             <Border BorderBrush="#D0D0D0" BorderThickness="1" Padding="8" Background="White">
-                <Image Source="../Resources/donate_trc20.png"
+                <Image Source="pack://application:,,,/OCR2Geometry;component/Resources/donate_trc20.png"
                        Width="170"
                        Height="170"
                        Stretch="Uniform" />
