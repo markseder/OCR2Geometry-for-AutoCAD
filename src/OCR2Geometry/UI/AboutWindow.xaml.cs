@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Windows;
 
 namespace OCR2Geometry.UI
@@ -35,8 +36,23 @@ namespace OCR2Geometry.UI
 
         private void CopyWallet_Click(object sender, RoutedEventArgs e)
         {
-            Clipboard.SetText(WalletTextBox.Text);
+            try
+            {
+                Clipboard.SetText(WalletTextBox.Text);
+            }
+            catch (ExternalException)
+            {
+                MessageBox.Show(
+                    this,
+                    "The clipboard is currently unavailable. Please try again, or select and copy the wallet address manually.",
+                    "OCR2Geometry",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
             MessageBox.Show(
+                this,
                 "TRC20 wallet address copied to clipboard.",
                 "OCR2Geometry",
                 MessageBoxButton.OK,
