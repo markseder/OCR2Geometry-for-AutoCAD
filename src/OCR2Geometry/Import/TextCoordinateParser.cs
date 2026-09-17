@@ -84,13 +84,17 @@ namespace OCR2Geometry.Import
                 var yToken = values[yIndex];
                 var zToken = values.Count > zIndex ? values[zIndex] : null;
 
+                var xRecovered = false;
+                var yRecovered = false;
+                var zRecovered = false;
+
                 if (recoverOcrDecimals)
                 {
-                    xToken = RecoverMissingDecimal(xToken, profiles[0], result);
-                    yToken = RecoverMissingDecimal(yToken, profiles[1], result);
+                    xToken = RecoverMissingDecimal(xToken, profiles[0], result, out xRecovered);
+                    yToken = RecoverMissingDecimal(yToken, profiles[1], result, out yRecovered);
                     if (zToken != null)
                     {
-                        zToken = RecoverMissingDecimal(zToken, profiles[2], result);
+                        zToken = RecoverMissingDecimal(zToken, profiles[2], result, out zRecovered);
                     }
                 }
 
@@ -110,7 +114,14 @@ namespace OCR2Geometry.Import
                 }
 
                 var number = hasExplicitNumber ? explicitNumber : nextNumber;
-                result.Points.Add(new CoordinatePoint(number, x, y, z));
+                var point = new CoordinatePoint(number, x, y, z)
+                {
+                    IsXRecovered = xRecovered,
+                    IsYRecovered = yRecovered,
+                    IsZRecovered = zRecovered
+                };
+
+                result.Points.Add(point);
                 nextNumber = number + 1;
             }
 
@@ -222,8 +233,14 @@ namespace OCR2Geometry.Import
             return decimalPlaces <= 4;
         }
 
-        private static string RecoverMissingDecimal(string token, OcrColumnProfile profile, ParseResult result)
+        private static string RecoverMissingDecimal(
+            string token,
+            OcrColumnProfile profile,
+            ParseResult result,
+            out bool recovered)
         {
+            recovered = false;
+
             if (profile == null || !profile.IsValid || string.IsNullOrWhiteSpace(token))
             {
                 return token;
@@ -254,6 +271,7 @@ namespace OCR2Geometry.Import
                 return token;
             }
 
+            recovered = true;
             result.RecoveredDecimalCount++;
             return sign + digits.Substring(0, splitIndex) + "." + digits.Substring(splitIndex);
         }
