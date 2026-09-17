@@ -362,9 +362,11 @@ namespace OCR2Geometry.UI
 
             try
             {
-                PointCreator.CreatePoints(Points, textHeight, textHeight);
+                var displayed = PointsGrid.Items.Cast<CoordinatePoint>().ToList();
+                var createContour = CreateContourCheckBox.IsChecked == true;
+                PointCreator.CreatePoints(displayed, textHeight, textHeight, createContour);
                 MessageBox.Show(
-                    Points.Count + " point(s) and labels were created in Model Space.",
+                    Points.Count + " point(s) and labels" + (createContour ? " and a closed polyline" : string.Empty) + " were created in Model Space.",
                     "OCR2Geometry",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);

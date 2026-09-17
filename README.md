@@ -4,7 +4,7 @@ OCR2Geometry for AutoCAD is a lightweight AutoCAD plugin that converts coordinat
 
 The first target is **AutoCAD 2020**, using **C# / .NET Framework / WPF**.
 
-## Current development build — v0.6.0 candidate
+## Current development build — v0.7.0 candidate
 
 Already working and validated in AutoCAD 2020:
 
@@ -113,7 +113,7 @@ C:\Program Files\Autodesk\AutoCAD 2020\accoremgd.dll
 
 ## Status
 
-Active development. v0.5.0 is merged into `main`; v0.6.0 is an unvalidated OCR candidate.
+Active development. v0.6.0 revision 4 is validated by the user and merged into `main`; v0.7.0 is pending AutoCAD 2020 validation.
 
 
 ## v0.6.0 OCR candidate
@@ -190,3 +190,16 @@ Test both Auto and Table cells on the ORIGINAL table image, including all border
 - The actual user log is added as a regression case: expect five rows, first Point empty, first XYZ 252956.80 / -128368.72 / 725.50, and subsequent Points 2/3/4/5 unchanged. Other cases cover empty tab cells, Point XY, and ambiguous integer-leading rows.
 
 UI revision 4 / DLL file version 0.6.0.4. C# regression execution and the full Windows/AutoCAD build remain unverified because no compiler or AutoCAD is available. Perform the actual log/image test, enter Point 1 manually, clear it and check Create points is blocked, then test Renumber from Start and CSV export. Keep PR unmerged pending user validation.
+
+
+## v0.7.0 — English tooltips and optional closed contour
+
+All plugin UI tooltips are English, including the recovered-decimal warning. Input parsing still recognizes Russian table headers.
+
+Enable **Create closed polyline** before clicking **Create points** to add a closed contour alongside the points and labels. The checkbox defaults to off. Vertices follow the current displayed row order (including sorting); the last vertex connects to the first through the entity's Closed property. With equal Z, a lightweight 2D polyline is created at that elevation. With varying Z, a simple 3D polyline preserves all elevations. No flattening is applied.
+
+The contour requires at least three distinct positions. Exact consecutive duplicate positions and an explicitly repeated closing position are omitted from contour vertices only; input rows, point entities and labels are preserved. Coordinates must be finite. Validation runs before any geometry is written, and the points, labels and contour share one transaction. The contour follows the supplied order and does not repair crossings or calculate a convex hull.
+
+Validation available here: static source/markup/handler checks and git diff --check. Full .NET Framework/WPF/AutoCAD compilation and runtime tests are not available in the editing environment.
+
+AutoCAD 2020 acceptance: rebuild and restart before NETLOAD; verify version 0.7.0; check the recovered-decimal tooltip; with checkbox off verify only points/labels; with checkbox on verify a square at Z=0, a square at common nonzero Z and a contour with varying Z; verify Closed=Yes and last-to-first edge; sort table and verify displayed order; test repeated closing point and fewer than three distinct positions (no partial creation). Confirm blank Point still blocks creation and OCR/CSV/About remain functional. Do not merge before user approval.
