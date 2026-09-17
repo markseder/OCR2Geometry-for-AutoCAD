@@ -1,5 +1,6 @@
 using System;
 using OCR2Geometry.Import;
+using OCR2Geometry.OCR;
 
 internal static class Program
 {
@@ -11,6 +12,15 @@ internal static class Program
 
     private static void Main()
     {
+        Check(OcrReadingPolicy.Normalize("246443 ,23", false) == "246443.23", "Space before comma from user log");
+        Check(OcrReadingPolicy.Normalize("--130579,86", false) == null, "Reject doubled sign");
+        Check(OcrReadingPolicy.Normalize("246443 23", false) == null, "Do not join separated digits");
+        Check(OcrReadingPolicy.Select(new[] { "-128368.72", "12836872" }, false) == "-128368.72", "Secondary reading cannot veto primary sign/decimal");
+        Check(OcrReadingPolicy.Select(new[] { "8" }, true) == "?", "Single unsupported point read is rejected");
+        Check(OcrReadingPolicy.Select(new[] { "3", "3", "8" }, true) == "3", "Point retries agree");
+        Check(OcrReadingPolicy.Select(new[] { "3", "8" }, true) == "?", "Conflicting point reads remain unresolved");
+        var spaced = TextCoordinateParser.ParseOcr("4 246443 ,23 -125053,95 800,00", 1);
+        Check(spaced.Points.Count == 1 && spaced.Points[0].X == 246443.23, "Text mode handles space before comma");
         var cells = TextCoordinateParser.ParseOcr("1\t252956,80\t-128368,72\t725,50\n2\t250123,60\t-124965,21\t786,00", 1);
         Check(cells.Points.Count == 2 && cells.Points[0].Number == 1 && cells.Points[0].Y == -128368.72, "First grid row and negative coordinates survive");
         var missing = TextCoordinateParser.ParseOcr("?\t252956,80\t-128368,72\t725,50\n2\t?\t-124965,21\t786,00", 1);

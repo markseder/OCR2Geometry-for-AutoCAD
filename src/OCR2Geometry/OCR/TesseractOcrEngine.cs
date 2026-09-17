@@ -46,6 +46,7 @@ namespace OCR2Geometry.OCR
             {
                 preparedPaths.Add(PrepareForOcr(imagePath, true));
                 preparedPaths.Add(PrepareForOcr(imagePath, false));
+                preparedPaths.Add(PrepareForOcr(imagePath, false, false));
                 using (var engine = new TesseractEngine(_tessdataDirectory, Language, EngineMode.LstmOnly))
                 {
                     engine.SetVariable("tessedit_char_whitelist", "0123456789.,-+ ");
@@ -55,13 +56,14 @@ namespace OCR2Geometry.OCR
 
                     var diagnostics = new StringBuilder();
                     diagnostics.AppendLine("Requested mode: " + mode);
+                    string cells = null;
                     if (mode != OcrMode.Text)
                     {
-                        var cells = RecognizeCells(engine, preparedPaths[1], expectedColumns, numbered, diagnostics);
-                        if (cells != null) return new OcrResult(cells, Name + " / Table cells", diagnostics.ToString());
+                        cells = RecognizeCells(engine, preparedPaths[1], preparedPaths[2], expectedColumns, numbered, diagnostics);
+                        if (cells != null && mode == OcrMode.TableCells) return new OcrResult(cells, Name + " / Table cells", diagnostics.ToString());
                         if (mode == OcrMode.TableCells)
                             return new OcrResult(string.Empty, Name, diagnostics.ToString());
-                        diagnostics.AppendLine("Auto: no compatible grid found; using text recognition.");
+                        diagnostics.AppendLine("Auto: compare cell result with text recognition; never stop on an empty cell result.");
                     }
 
                     var modes = new[]
@@ -71,8 +73,9 @@ namespace OCR2Geometry.OCR
                         PageSegMode.SparseText
                     };
 
-                    var bestText = string.Empty;
-                    var bestScore = int.MinValue;
+                    var bestText = cells ?? string.Empty;
+                    var bestScore = cells == null ? int.MinValue : ScoreText(cells, expectedColumns, numbered);
+                    var selectedMethod = cells == null ? "Text" : "Table cells";
 
                     foreach (var preparedPath in preparedPaths.Concat(new[] { imagePath }))
                     foreach (var segmentation in modes)
@@ -88,6 +91,7 @@ namespace OCR2Geometry.OCR
                             {
                                 bestScore = score;
                                 bestText = text;
+                                selectedMethod = "Text";
                             }
                         }
                     }
@@ -101,7 +105,8 @@ namespace OCR2Geometry.OCR
                         }
                     }
 
-                    return new OcrResult(bestText, Name + " / Text", diagnostics.ToString());
+                    diagnostics.AppendLine("Auto/text selection: " + selectedMethod + "; score=" + bestScore);
+                    return new OcrResult(bestText, Name + " / " + selectedMethod, diagnostics.ToString());
                 }
             }
             finally
@@ -119,10 +124,11 @@ namespace OCR2Geometry.OCR
             }
         }
 
-        private static string RecognizeCells(TesseractEngine engine, string path, int columns,
+        private static string RecognizeCells(TesseractEngine engine, string path, string grayscalePath, int columns,
             bool numbered, StringBuilder diagnostics)
         {
             using (var bitmap = new Bitmap(path))
+            using (var grayscale = new Bitmap(grayscalePath))
             {
                 var horizontal = FindGridLines(bitmap, true);
                 var vertical = FindGridLines(bitmap, false);
@@ -151,55 +157,57 @@ namespace OCR2Geometry.OCR
                         var value = "?";
                         if (width > 3 && height > 3)
                         {
-                            using (var cell = new Bitmap(width + 30, height + 30, PixelFormat.Format24bppRgb))
-                            {
-                                using (var g = Graphics.FromImage(cell))
-                                {
-                                    g.Clear(Color.White);
-                                    g.DrawImage(bitmap, new Rectangle(15, 15, width, height),
-                                        new Rectangle(left, top, width, height), GraphicsUnit.Pixel);
-                                }
-                                using (var stream = new MemoryStream())
-                                {
-                                    cell.Save(stream, System.Drawing.Imaging.ImageFormat.Png);
-                                    using (var pix = Pix.LoadFromMemory(stream.ToArray()))
-                                    {
-                                        string candidate = null;
-                                        bool conflict = false;
-                                        foreach (var segmentation in new[] { PageSegMode.SingleLine, PageSegMode.SingleWord })
-                                        {
-                                            using (var page = engine.Process(pix, segmentation))
-                                            {
-                                                var raw = (page.GetText() ?? string.Empty).Trim();
-                                                diagnostics.AppendLine("Row " + (row + 1) + ", column " + (col + 1) + " / " + segmentation + ": " + raw);
-                                                // Never join digit groups across a gap: they may be distinct numbers.
-                                                var token = Regex.Replace(raw, @"(?<=\d)([.,])\s+(?=\d)", "$1");
-                                                var pattern = numbered && col == 0 ? @"^[-+]?\d+$" : @"^[-+]?\d+(?:[.,]\d+)?$";
-                                                if (!Regex.IsMatch(token, pattern)) continue;
-                                                token = token.Replace(',', '.');
-                                                if (candidate == null) candidate = token;
-                                                else
-                                                {
-                                                    decimal a, b;
-                                                    if (!decimal.TryParse(candidate, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out a)
-                                                        || !decimal.TryParse(token, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out b) || a != b)
-                                                        conflict = true;
-                                                }
-                                            }
-                                        }
-                                        if (candidate != null && !conflict) value = candidate;
-                                        if (conflict) diagnostics.AppendLine("Conflicting readings; cell needs manual review.");
-                                    }
-                                }
-                            }
+                            value = ReadCell(engine, bitmap, grayscale, new Rectangle(left, top, width, height),
+                                numbered && col == 0, row + 1, col + 1, diagnostics);
                         }
                         values.Add(value);
                     }
                     output.AppendLine(string.Join("\t", values));
                 }
-                diagnostics.AppendLine("Table cells selected. '?' preserves an unreadable or conflicting cell; its row is skipped, never renumbered.");
+                diagnostics.AppendLine("Table cells: '?' denotes unreadable/unconfirmed content. Review highlighted OCR rows against the source; point numbers are never inferred.");
                 return output.ToString();
             }
+        }
+
+        private static string ReadCell(TesseractEngine engine, Bitmap binary, Bitmap grayscale,
+            Rectangle bounds, bool pointNumber, int row, int column, StringBuilder diagnostics)
+        {
+            var readings = new List<string>();
+            // Coordinates: prefer a complete line, preserving signs and decimal marks.
+            // SingleWord is deliberately excluded: it dropped punctuation in the user's log.
+            var modes = pointNumber
+                ? new[] { PageSegMode.SingleBlock, PageSegMode.SingleChar, PageSegMode.SingleWord }
+                : new[] { PageSegMode.SingleLine, PageSegMode.SingleBlock };
+            foreach (var source in new[] { binary, grayscale })
+            using (var cell = new Bitmap(bounds.Width + 40, bounds.Height + 40, PixelFormat.Format24bppRgb))
+            {
+                using (var g = Graphics.FromImage(cell))
+                {
+                    g.Clear(Color.White);
+                    g.DrawImage(source, new Rectangle(20, 20, bounds.Width, bounds.Height), bounds, GraphicsUnit.Pixel);
+                }
+                using (var stream = new MemoryStream())
+                {
+                    cell.Save(stream, System.Drawing.Imaging.ImageFormat.Png);
+                    using (var pix = Pix.LoadFromMemory(stream.ToArray()))
+                    foreach (var segmentation in modes)
+                    using (var page = engine.Process(pix, segmentation))
+                    {
+                        var raw = (page.GetText() ?? string.Empty).Trim();
+                        var token = OcrReadingPolicy.Normalize(raw, pointNumber);
+                        diagnostics.AppendLine("Row " + row + ", column " + column + " / "
+                            + (source == binary ? "binary" : "grayscale") + " / " + segmentation + ": " + raw);
+                        if (token != null) readings.Add(token);
+                    }
+                }
+            }
+            var selected = OcrReadingPolicy.Select(readings, pointNumber);
+            diagnostics.AppendLine("Selected: " + selected + (pointNumber
+                ? " (requires at least two agreeing reads and a unique winner)"
+                : " (first valid SingleLine/SingleBlock; verify against image)"));
+            if (readings.Distinct().Count() > 1)
+                diagnostics.AppendLine("Alternate readings differ; OCR row is highlighted for review.");
+            return selected;
         }
 
         private static Rectangle FindInkBounds(Bitmap bitmap, Rectangle area)
@@ -273,7 +281,7 @@ namespace OCR2Geometry.OCR
                 - parsed.RecoveredDecimalCount * 10;
         }
 
-        private static string PrepareForOcr(string sourcePath, bool removeGrid)
+        private static string PrepareForOcr(string sourcePath, bool removeGrid, bool threshold = true)
         {
             var tempDirectory = Path.Combine(Path.GetTempPath(), "OCR2Geometry", "ocr");
             Directory.CreateDirectory(tempDirectory);
@@ -305,7 +313,7 @@ namespace OCR2Geometry.OCR
                         });
 
                         attributes.SetColorMatrix(grayMatrix);
-                        attributes.SetThreshold(0.72f);
+                        if (threshold) attributes.SetThreshold(0.72f);
 
                         graphics.DrawImage(
                             source,

@@ -243,6 +243,7 @@ namespace OCR2Geometry.UI
             Points.Clear();
             foreach (var point in result.Points)
             {
+                point.NeedsOcrReview = isOcr;
                 Points.Add(point);
             }
 
@@ -251,6 +252,7 @@ namespace OCR2Geometry.UI
             var recoveryText = result.RecoveredDecimalCount > 0
                 ? "; recovered decimal separators: " + result.RecoveredDecimalCount
                 : string.Empty;
+            if (isOcr) recoveryText += "; verify highlighted OCR rows";
 
             if (result.InvalidLineNumbers.Count > 0)
             {

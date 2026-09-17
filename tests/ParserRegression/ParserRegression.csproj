@@ -10,6 +10,7 @@
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Compile Include="Program.cs" />
+    <Compile Include="..\..\src\OCR2Geometry\OCR\OcrReadingPolicy.cs" />
     <Compile Include="..\..\src\OCR2Geometry\Import\TextCoordinateParser.cs" />
     <Compile Include="..\..\src\OCR2Geometry\Models\CoordinatePoint.cs" />
   </ItemGroup>

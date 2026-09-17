@@ -66,6 +66,7 @@
     <Compile Include="Models\CoordinatePoint.cs" />
     <Compile Include="OCR\IOcrEngine.cs" />
     <Compile Include="OCR\OcrResult.cs" />
+    <Compile Include="OCR\OcrReadingPolicy.cs" />
     <Compile Include="OCR\TesseractOcrEngine.cs" />
     <Compile Include="OCR\UnavailableOcrEngine.cs" />
     <Compile Include="UI\MainWindow.xaml.cs">

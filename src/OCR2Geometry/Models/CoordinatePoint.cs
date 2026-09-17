@@ -13,6 +13,8 @@ namespace OCR2Geometry.Models
         private bool _isYRecovered;
         private bool _isZRecovered;
 
+        public bool NeedsOcrReview { get; set; }
+
         public event PropertyChangedEventHandler PropertyChanged;
 
         public int Number

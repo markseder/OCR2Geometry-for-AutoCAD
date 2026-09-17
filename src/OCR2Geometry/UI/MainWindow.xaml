@@ -36,7 +36,7 @@
 
         <TextBlock Grid.Row="1"
                    Margin="0,6,0,12"
-                   Text="AutoCAD 2020 — local OCR v0.6.0 revision 2 (no Python)"
+                   Text="AutoCAD 2020 — local OCR v0.6.0 revision 3 (no Python)"
                    Foreground="Gray" />
 
         <Grid Grid.Row="2" Margin="0,0,0,12">
@@ -117,6 +117,16 @@
                       HeadersVisibility="Column"
                       GridLinesVisibility="Horizontal"
                       CellEditEnding="PointsGrid_CellEditEnding">
+                <DataGrid.RowStyle>
+                    <Style TargetType="DataGridRow">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding NeedsOcrReview}" Value="True">
+                                <Setter Property="Background" Value="#FFFFF2CC" />
+                                <Setter Property="ToolTip" Value="OCR result: verify Point, signs and all coordinates against the source. See OCR details for alternate readings." />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </DataGrid.RowStyle>
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="Point" Binding="{Binding Number}" Width="85" IsReadOnly="True" />
 

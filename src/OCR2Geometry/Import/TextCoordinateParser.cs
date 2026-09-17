@@ -318,7 +318,7 @@ namespace OCR2Geometry.Import
             if (line.Contains("\t")) return line.Split(new[] { '\t' }, StringSplitOptions.None).Select(v => v.Trim()).ToList();
             // A comma is a decimal separator in OCR, never a CSV delimiter.
             // Tesseract may insert whitespace between a separator and its digits.
-            var normalized = Regex.Replace(line, @"(?<=\d)([.,])\s+(?=\d{1,4}(?:\s|$))", "$1");
+            var normalized = Regex.Replace(line, @"(?<=\d)\s*([.,])\s*(?=\d{1,4}(?:\s|$))", "$1");
             return NumberRegex.Matches(normalized).Cast<Match>().Select(m => m.Value).ToList();
         }
 

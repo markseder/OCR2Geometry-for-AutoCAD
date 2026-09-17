@@ -164,3 +164,18 @@ Do not merge v0.6.0 until the user tests it in AutoCAD 2020 and explicitly appro
 Validation: a separate Tesseract CLI experiment on the latest screenshot's table crop found 6 horizontal/5 vertical boundaries. Tight cell crops with padding and SingleLine/SingleWord yielded all 20 expected values, including Point 1 and negative Y values (invalid alternatives rejected). This experiment uses a different preprocessing library and does not prove .NET/WPF runtime behavior. C# compilation, regression harness execution, and AutoCAD 2020 tests remain unavailable in this environment.
 
 Acceptance: rebuild, restart AutoCAD to unload the old DLL, NETLOAD, verify revision 2 label, choose Point X Y Z and Table cells, recognize the original five-row table. Expect Point 1 / X 252956.80 / Y -128368.72 / Z 725.50 and compare all other rows. Check Auto and Text, a missing cell, no detected grid, all four layouts, and OCR details. Keep PR unmerged pending approval.
+
+### v0.6.0 revision 3 — fix regression confirmed by AutoCAD log
+
+Revision 2 failed the user's real AutoCAD test: SingleWord removed punctuation and vetoed correct SingleLine coordinates. The earlier CLI screenshot experiment did not reproduce the Windows result and must not be treated as acceptance.
+
+- Coordinates now use SingleLine and SingleBlock, trying thresholded and grayscale crops. The first valid reading has priority; secondary readings are logged, not allowed to veto it. SingleWord is excluded for coordinates.
+- Normalize spaces on either side of an existing decimal mark (including `246443 ,23`); never concatenate separated digit groups or repair doubled minus signs.
+- Point numbers use SingleBlock, SingleChar and SingleWord on both crops. At least two agreeing reads and a unique winning value are required. No point number is inferred from row order.
+- Auto compares cell and text candidates even when a grid exists, ranking by complete parsed rows. Table cells remains available for explicit cell-only diagnosis.
+- All OCR-imported rows are highlighted for source verification, including point numbers; alternate readings remain visible in OCR details. Existing decimal-recovery cell highlighting remains.
+- UI: revision 3; DLL file version 0.6.0.3.
+
+Regression cases cover the supplied log's punctuation, duplicate signs, coordinate-selection priority, and point agreement rules. The C# test harness and full AutoCAD plugin could not be built/run here (no C# compiler or AutoCAD). Static markup/handler/project checks and git diff --check are the available validation; numeric accuracy still needs the user's Windows test. Auto can be slower because it also evaluates text candidates. First-valid selection and repeated-number agreement do not guarantee OCR accuracy.
+
+Test both Auto and Table cells on the ORIGINAL table image, including all borders. Verify all five rows and signs, especially Point 1, Point 3 and X=246443.23 for Point 4. If a number remains unreadable, send OCR details plus the original cropped input PNG (the screenshot preview is rescaled and is not the same OCR input).
