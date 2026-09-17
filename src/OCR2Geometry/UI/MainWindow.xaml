@@ -23,7 +23,7 @@
 
         <TextBlock Grid.Row="1"
                    Margin="0,6,0,12"
-                   Text="AutoCAD 2020 — local OCR v0.4 (no Python)"
+                   Text="AutoCAD 2020 — local OCR v0.4.1 (no Python)"
                    Foreground="Gray" />
 
         <Grid Grid.Row="2" Margin="0,0,0,12">
@@ -85,12 +85,49 @@
                       SelectionMode="Extended"
                       SelectionUnit="FullRow"
                       HeadersVisibility="Column"
-                      GridLinesVisibility="Horizontal">
+                      GridLinesVisibility="Horizontal"
+                      CellEditEnding="PointsGrid_CellEditEnding">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="Point" Binding="{Binding Number}" Width="85" IsReadOnly="True" />
-                    <DataGridTextColumn Header="X" Binding="{Binding X, UpdateSourceTrigger=LostFocus}" Width="*" />
-                    <DataGridTextColumn Header="Y" Binding="{Binding Y, UpdateSourceTrigger=LostFocus}" Width="*" />
-                    <DataGridTextColumn Header="Z" Binding="{Binding Z, UpdateSourceTrigger=LostFocus}" Width="*" />
+
+                    <DataGridTextColumn Header="X" Binding="{Binding X, UpdateSourceTrigger=LostFocus}" Width="*">
+                        <DataGridTextColumn.CellStyle>
+                            <Style TargetType="DataGridCell">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsXRecovered}" Value="True">
+                                        <Setter Property="Background" Value="#FFFFE58A" />
+                                        <Setter Property="ToolTip" Value="Запятая восстановлена автоматически. Проверьте значение." />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGridTextColumn.CellStyle>
+                    </DataGridTextColumn>
+
+                    <DataGridTextColumn Header="Y" Binding="{Binding Y, UpdateSourceTrigger=LostFocus}" Width="*">
+                        <DataGridTextColumn.CellStyle>
+                            <Style TargetType="DataGridCell">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsYRecovered}" Value="True">
+                                        <Setter Property="Background" Value="#FFFFE58A" />
+                                        <Setter Property="ToolTip" Value="Запятая восстановлена автоматически. Проверьте значение." />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGridTextColumn.CellStyle>
+                    </DataGridTextColumn>
+
+                    <DataGridTextColumn Header="Z" Binding="{Binding Z, UpdateSourceTrigger=LostFocus}" Width="*">
+                        <DataGridTextColumn.CellStyle>
+                            <Style TargetType="DataGridCell">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsZRecovered}" Value="True">
+                                        <Setter Property="Background" Value="#FFFFE58A" />
+                                        <Setter Property="ToolTip" Value="Запятая восстановлена автоматически. Проверьте значение." />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGridTextColumn.CellStyle>
+                    </DataGridTextColumn>
                 </DataGrid.Columns>
             </DataGrid>
 
