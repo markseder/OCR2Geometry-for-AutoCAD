@@ -4,7 +4,7 @@ OCR2Geometry for AutoCAD is a lightweight AutoCAD plugin that converts coordinat
 
 The first target is **AutoCAD 2020**, using **C# / .NET Framework / WPF**.
 
-## Current development build — v0.5.0
+## Current development build — v0.6.0 candidate
 
 Already working and validated in AutoCAD 2020:
 
@@ -113,4 +113,41 @@ C:\Program Files\Autodesk\AutoCAD 2020\accoremgd.dll
 
 ## Status
 
-Active development. v0.4.1 is merged into `main`; v0.5.0 is under local validation before merge.
+Active development. v0.5.0 is merged into `main`; v0.6.0 is an unvalidated OCR candidate.
+
+
+## v0.6.0 OCR candidate
+
+v0.5.0 was approved and merged into main. This branch is NOT validated in AutoCAD yet.
+
+- Choose the source image column order: Point X Y Z (default), Point X Y, X Y Z, or X Y. This affects OCR only.
+- OCR rejects rows with missing/extra numeric fields instead of silently shifting columns.
+- Commas in OCR are decimal separators, never CSV delimiters.
+- Try both grid-cleaned and unchanged preprocessing, plus the original image. Rank results using complete rows in the selected layout instead of digit count.
+- Preserve aspect ratio when limiting image size.
+- Decimal recovery requires at least two matching samples and a strict majority; recovered coordinates stay yellow.
+
+### Verification
+
+In a Visual Studio Developer Command Prompt:
+
+```bat
+msbuild tests\ParserRegression\ParserRegression.csproj /p:Configuration=Release
+tests\ParserRegression\bin\ParserRegression.exe
+```
+
+These tests compile the actual parser and model without AutoCAD. They cover the screenshot reference, shifted/missing fields, four layouts, decimal recovery, and CSV/text regression. They were added but could not be executed in the Linux editing environment (no C# compiler). Full plugin compilation and AutoCAD 2020 testing remain required.
+
+A separate Tesseract 5.3.4 CLI experiment on the reduced preview from the screenshot confirmed better row extraction after removing grid lines, but still misread individual digits. This is not an end-to-end plugin test. Use the original table image for acceptance and compare every coordinate; clean row structure is not proof of numeric accuracy. Nine OCR passes may take longer than v0.5.0.
+
+Reference values from the screenshot:
+
+| Point | X | Y | Z |
+|---|---|---|---|
+| 1 | 72968.58 | 65990.98 | 725.50 |
+| 2 | 70174.18 | 69426.41 | 786.00 |
+| 3 | 68041.52 | 71178.59 | 865.70 |
+| 4 | 66510.06 | 69358.06 | 800.00 |
+| 5 | 70850.81 | 63803.75 | 445.00 |
+
+Do not merge v0.6.0 until the user tests it in AutoCAD 2020 and explicitly approves.

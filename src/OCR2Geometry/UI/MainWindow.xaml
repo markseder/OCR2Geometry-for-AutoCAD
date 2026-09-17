@@ -36,7 +36,7 @@
 
         <TextBlock Grid.Row="1"
                    Margin="0,6,0,12"
-                   Text="AutoCAD 2020 — local OCR v0.5.0 (no Python)"
+                   Text="AutoCAD 2020 — local OCR v0.6.0 (no Python)"
                    Foreground="Gray" />
 
         <Grid Grid.Row="2" Margin="0,0,0,12">
@@ -78,6 +78,12 @@
                 <Button Grid.Column="0" Width="150" Height="32" Margin="0,0,8,0" Content="Paste coordinates" Click="PasteCoordinates_Click" />
                 <Button Grid.Column="1" Width="120" Height="32" Margin="0,0,8,0" Content="Import CSV/TXT" Click="ImportTextFile_Click" />
                 <Button Grid.Column="2" Width="90" Height="32" Content="Clear table" Click="ClearTable_Click" />
+                <ComboBox Grid.Column="3" x:Name="OcrLayoutComboBox" Width="160" HorizontalAlignment="Left" Margin="10,0,10,0" SelectedIndex="0" ToolTip="Column order in the source image (OCR only)">
+                    <ComboBoxItem Content="OCR: Point X Y Z" />
+                    <ComboBoxItem Content="OCR: Point X Y" />
+                    <ComboBoxItem Content="OCR: X Y Z" />
+                    <ComboBoxItem Content="OCR: X Y" />
+                </ComboBox>
                 <TextBlock Grid.Column="4" x:Name="ImportStatusText" VerticalAlignment="Center" Foreground="Gray" Text="Ready" />
             </Grid>
         </Grid>

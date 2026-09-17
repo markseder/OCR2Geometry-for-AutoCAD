@@ -121,7 +121,9 @@ namespace OCR2Geometry.UI
             try
             {
                 ImportStatusText.Text = "Recognizing image with " + _ocrEngine.Name + "...";
-                var result = _ocrEngine.Recognize(_selectedImagePath);
+                var result = _ocrEngine.Recognize(_selectedImagePath,
+                    OcrLayoutComboBox.SelectedIndex == 0 ? 4 : OcrLayoutComboBox.SelectedIndex == 3 ? 2 : 3,
+                    OcrLayoutComboBox.SelectedIndex <= 1);
                 if (string.IsNullOrWhiteSpace(result.Text))
                 {
                     ShowError("OCR did not return any text.");
@@ -212,12 +214,15 @@ namespace OCR2Geometry.UI
             }
 
             var result = isOcr
-                ? TextCoordinateParser.ParseOcr(text, startNumber)
+                ? TextCoordinateParser.ParseOcr(text, startNumber,
+                    OcrLayoutComboBox.SelectedIndex == 0 ? 4 : OcrLayoutComboBox.SelectedIndex == 3 ? 2 : 3,
+                    OcrLayoutComboBox.SelectedIndex <= 1)
                 : TextCoordinateParser.Parse(text, startNumber);
 
             if (result.Points.Count == 0)
             {
-                ShowError("No coordinate rows were recognized in " + sourceName + ".");
+                ShowError("No coordinate rows were recognized in " + sourceName +
+                    (isOcr ? ". Check the OCR column order and image quality." : "."));
                 return;
             }
 

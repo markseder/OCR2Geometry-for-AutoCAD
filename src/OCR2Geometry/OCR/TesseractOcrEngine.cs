@@ -1,10 +1,13 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Runtime.InteropServices;
+using OCR2Geometry.Import;
 using Tesseract;
 
 namespace OCR2Geometry.OCR
@@ -27,7 +30,7 @@ namespace OCR2Geometry.OCR
                 "tessdata");
         }
 
-        public OcrResult Recognize(string imagePath)
+        public OcrResult Recognize(string imagePath, int expectedColumns = 4, bool numbered = true)
         {
             if (string.IsNullOrWhiteSpace(imagePath) || !File.Exists(imagePath))
             {
@@ -35,10 +38,12 @@ namespace OCR2Geometry.OCR
             }
 
             EnsureLanguageData();
-            var preparedPath = PrepareForOcr(imagePath);
+            var preparedPaths = new List<string>();
 
             try
             {
+                preparedPaths.Add(PrepareForOcr(imagePath, true));
+                preparedPaths.Add(PrepareForOcr(imagePath, false));
                 using (var engine = new TesseractEngine(_tessdataDirectory, Language, EngineMode.LstmOnly))
                 {
                     engine.SetVariable("tessedit_char_whitelist", "0123456789.,-+ ");
@@ -48,21 +53,22 @@ namespace OCR2Geometry.OCR
 
                     var modes = new[]
                     {
-                        PageSegMode.SparseText,
+                        PageSegMode.SingleBlock,
                         PageSegMode.Auto,
-                        PageSegMode.SingleBlock
+                        PageSegMode.SparseText
                     };
 
                     var bestText = string.Empty;
-                    var bestScore = -1;
+                    var bestScore = int.MinValue;
 
+                    foreach (var preparedPath in preparedPaths.Concat(new[] { imagePath }))
                     foreach (var mode in modes)
                     {
                         using (var image = Pix.LoadFromFile(preparedPath))
                         using (var page = engine.Process(image, mode))
                         {
                             var text = page.GetText() ?? string.Empty;
-                            var score = ScoreText(text);
+                            var score = ScoreText(text, expectedColumns, numbered);
                             if (score > bestScore)
                             {
                                 bestScore = score;
@@ -87,9 +93,9 @@ namespace OCR2Geometry.OCR
             {
                 try
                 {
-                    if (!string.Equals(preparedPath, imagePath, StringComparison.OrdinalIgnoreCase) && File.Exists(preparedPath))
+                    foreach (var preparedPath in preparedPaths)
                     {
-                        File.Delete(preparedPath);
+                        if (File.Exists(preparedPath)) File.Delete(preparedPath);
                     }
                 }
                 catch
@@ -98,20 +104,20 @@ namespace OCR2Geometry.OCR
             }
         }
 
-        private static int ScoreText(string text)
+        private static int ScoreText(string text, int expectedColumns, bool numbered)
         {
             if (string.IsNullOrWhiteSpace(text))
             {
                 return 0;
             }
 
-            var digitCount = text.Count(char.IsDigit);
-            var separatorCount = text.Count(c => c == ',' || c == '.' || c == '-' || c == '+');
-            var lineCount = text.Count(c => c == '\n');
-            return digitCount * 10 + separatorCount * 3 + lineCount;
+            // Prefer complete, consistently structured coordinate rows, not the most digits.
+            var parsed = TextCoordinateParser.ParseOcr(text, 1, expectedColumns, numbered);
+            return parsed.Points.Count * 1000 - parsed.InvalidLineNumbers.Count * 100
+                - parsed.RecoveredDecimalCount * 10;
         }
 
-        private static string PrepareForOcr(string sourcePath)
+        private static string PrepareForOcr(string sourcePath, bool removeGrid)
         {
             var tempDirectory = Path.Combine(Path.GetTempPath(), "OCR2Geometry", "ocr");
             Directory.CreateDirectory(tempDirectory);
@@ -119,46 +125,110 @@ namespace OCR2Geometry.OCR
 
             using (var source = new Bitmap(sourcePath))
             {
-                var scale = 3;
-                var width = Math.Min(source.Width * scale, 6000);
-                var height = Math.Min(source.Height * scale, 6000);
+                var scale = Math.Min(3.0, 6000.0 / Math.Max(source.Width, source.Height));
+                var width = Math.Max(1, (int)Math.Round(source.Width * scale));
+                var height = Math.Max(1, (int)Math.Round(source.Height * scale));
 
                 using (var prepared = new Bitmap(width, height, PixelFormat.Format24bppRgb))
-                using (var graphics = Graphics.FromImage(prepared))
-                using (var attributes = new ImageAttributes())
                 {
-                    graphics.Clear(Color.White);
-                    graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                    graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
-                    graphics.SmoothingMode = SmoothingMode.HighQuality;
-
-                    var grayMatrix = new ColorMatrix(new[]
+                    using (var graphics = Graphics.FromImage(prepared))
+                    using (var attributes = new ImageAttributes())
                     {
-                        new[] { 0.299f, 0.299f, 0.299f, 0f, 0f },
-                        new[] { 0.587f, 0.587f, 0.587f, 0f, 0f },
-                        new[] { 0.114f, 0.114f, 0.114f, 0f, 0f },
-                        new[] { 0f, 0f, 0f, 1f, 0f },
-                        new[] { 0f, 0f, 0f, 0f, 1f }
-                    });
+                        graphics.Clear(Color.White);
+                        graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                        graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
+                        graphics.SmoothingMode = SmoothingMode.HighQuality;
 
-                    attributes.SetColorMatrix(grayMatrix);
-                    attributes.SetThreshold(0.72f);
+                        var grayMatrix = new ColorMatrix(new[]
+                        {
+                            new[] { 0.299f, 0.299f, 0.299f, 0f, 0f },
+                            new[] { 0.587f, 0.587f, 0.587f, 0f, 0f },
+                            new[] { 0.114f, 0.114f, 0.114f, 0f, 0f },
+                            new[] { 0f, 0f, 0f, 1f, 0f },
+                            new[] { 0f, 0f, 0f, 0f, 1f }
+                        });
 
-                    graphics.DrawImage(
-                        source,
-                        new Rectangle(0, 0, width, height),
-                        0,
-                        0,
-                        source.Width,
-                        source.Height,
-                        GraphicsUnit.Pixel,
-                        attributes);
+                        attributes.SetColorMatrix(grayMatrix);
+                        attributes.SetThreshold(0.72f);
 
+                        graphics.DrawImage(
+                            source,
+                            new Rectangle(0, 0, width, height),
+                            0,
+                            0,
+                            source.Width,
+                            source.Height,
+                            GraphicsUnit.Pixel,
+                            attributes);
+
+                    }
+                    if (removeGrid) RemoveGridLines(prepared);
                     prepared.Save(targetPath, System.Drawing.Imaging.ImageFormat.Png);
                 }
             }
 
             return targetPath;
+        }
+
+        private static void RemoveGridLines(Bitmap bitmap)
+        {
+            var width = bitmap.Width;
+            var height = bitmap.Height;
+            var data = bitmap.LockBits(new Rectangle(0, 0, width, height),
+                ImageLockMode.ReadWrite, PixelFormat.Format24bppRgb);
+            try
+            {
+                var pixels = new byte[data.Stride * height];
+                Marshal.Copy(data.Scan0, pixels, 0, pixels.Length);
+                var erase = new bool[width * height];
+                // Detect long uninterrupted strokes; mark both directions before erasing.
+                for (var y = 0; y < height; y++)
+                {
+                    var start = -1;
+                    for (var x = 0; x <= width; x++)
+                    {
+                        if (x < width && pixels[y * data.Stride + x * 3] < 128)
+                        {
+                            if (start < 0) start = x;
+                        }
+                        else if (start >= 0)
+                        {
+                            if (x - start >= Math.Max(40, width / 3))
+                                for (var k = start; k < x; k++) erase[y * width + k] = true;
+                            start = -1;
+                        }
+                    }
+                }
+                for (var x = 0; x < width; x++)
+                {
+                    var start = -1;
+                    for (var y = 0; y <= height; y++)
+                    {
+                        if (y < height && pixels[y * data.Stride + x * 3] < 128)
+                        {
+                            if (start < 0) start = y;
+                        }
+                        else if (start >= 0)
+                        {
+                            if (y - start >= Math.Max(40, height / 3))
+                                for (var k = start; k < y; k++) erase[k * width + x] = true;
+                            start = -1;
+                        }
+                    }
+                }
+                for (var y = 0; y < height; y++)
+                for (var x = 0; x < width; x++)
+                {
+                    if (!erase[y * width + x]) continue;
+                    var offset = y * data.Stride + x * 3;
+                    pixels[offset] = pixels[offset + 1] = pixels[offset + 2] = 255;
+                }
+                Marshal.Copy(pixels, 0, data.Scan0, pixels.Length);
+            }
+            finally
+            {
+                bitmap.UnlockBits(data);
+            }
         }
 
         private void EnsureLanguageData()
