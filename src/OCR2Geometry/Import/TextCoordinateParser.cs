@@ -10,7 +10,9 @@ namespace OCR2Geometry.Import
     public sealed class ParseResult
     {
         public List<CoordinatePoint> Points { get; } = new List<CoordinatePoint>();
+        public List<string> InvalidLineDetails { get; } = new List<string>();
         public List<int> InvalidLineNumbers { get; } = new List<int>();
+        public List<string> ReviewDetails { get; } = new List<string>();
         public int RecoveredDecimalCount { get; set; }
     }
 
@@ -30,12 +32,12 @@ namespace OCR2Geometry.Import
             return Parse(text, startNumber, false);
         }
 
-        public static ParseResult ParseOcr(string text, int startNumber)
+        public static ParseResult ParseOcr(string text, int startNumber, int expectedColumns = 4, bool numbered = true)
         {
-            return Parse(text, startNumber, true);
+            return Parse(text, startNumber, true, expectedColumns, numbered);
         }
 
-        private static ParseResult Parse(string text, int startNumber, bool recoverOcrDecimals)
+        private static ParseResult Parse(string text, int startNumber, bool recoverOcrDecimals, int expectedColumns = 0, bool numbered = false)
         {
             var result = new ParseResult();
             if (string.IsNullOrWhiteSpace(text))
@@ -44,12 +46,12 @@ namespace OCR2Geometry.Import
             }
 
             var lines = text.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
-            var profiles = recoverOcrDecimals ? BuildOcrColumnProfiles(lines) : null;
+            var profiles = recoverOcrDecimals ? BuildOcrColumnProfiles(lines, expectedColumns, numbered) : null;
             var nextNumber = startNumber;
 
             for (var i = 0; i < lines.Length; i++)
             {
-                var line = lines[i].Trim();
+                var line = recoverOcrDecimals ? lines[i].Trim(' ') : lines[i].Trim();
                 if (string.IsNullOrWhiteSpace(line))
                 {
                     continue;
@@ -61,15 +63,23 @@ namespace OCR2Geometry.Import
                     continue;
                 }
 
-                var values = ExtractValues(line);
+                var values = recoverOcrDecimals ? GetOcrValues(line, expectedColumns, numbered) : ExtractValues(line);
+                if (recoverOcrDecimals && values.Count != expectedColumns)
+                {
+                    result.InvalidLineNumbers.Add(i + 1);
+                    result.InvalidLineDetails.Add("Line " + (i + 1) + ": " + line + " — expected " + expectedColumns + " fields, found " + values.Count + ".");
+                    continue;
+                }
                 if (values.Count < 2)
                 {
                     result.InvalidLineNumbers.Add(i + 1);
+                    result.InvalidLineDetails.Add("Line " + (i + 1) + ": " + line + " — fewer than two coordinate fields.");
                     continue;
                 }
 
                 var explicitNumber = 0;
-                var hasExplicitNumber = HasExplicitPointNumber(values, out explicitNumber);
+                var hasExplicitNumber = recoverOcrDecimals ? numbered : HasExplicitPointNumber(values, out explicitNumber);
+                var numberMissing = recoverOcrDecimals && numbered && !TryParseInt(values[0], out explicitNumber);
                 var xIndex = hasExplicitNumber ? 1 : 0;
                 var yIndex = hasExplicitNumber ? 2 : 1;
                 var zIndex = hasExplicitNumber ? 3 : 2;
@@ -77,6 +87,7 @@ namespace OCR2Geometry.Import
                 if (values.Count <= yIndex)
                 {
                     result.InvalidLineNumbers.Add(i + 1);
+                    result.InvalidLineDetails.Add("Line " + (i + 1) + ": " + line + " — X or Y column missing.");
                     continue;
                 }
 
@@ -103,6 +114,7 @@ namespace OCR2Geometry.Import
                 if (!TryParseDouble(xToken, out x) || !TryParseDouble(yToken, out y))
                 {
                     result.InvalidLineNumbers.Add(i + 1);
+                    result.InvalidLineDetails.Add("Line " + (i + 1) + ": " + line + " — X or Y is unreadable or invalid: [" + xToken + "] [" + yToken + "]");
                     continue;
                 }
 
@@ -110,10 +122,11 @@ namespace OCR2Geometry.Import
                 if (zToken != null && !TryParseDouble(zToken, out z))
                 {
                     result.InvalidLineNumbers.Add(i + 1);
+                    result.InvalidLineDetails.Add("Line " + (i + 1) + ": " + line + " — Z is unreadable or invalid: [" + zToken + "]");
                     continue;
                 }
 
-                var number = hasExplicitNumber ? explicitNumber : nextNumber;
+                int? number = numberMissing ? (int?)null : hasExplicitNumber ? explicitNumber : nextNumber;
                 var point = new CoordinatePoint(number, x, y, z)
                 {
                     IsXRecovered = xRecovered,
@@ -122,13 +135,14 @@ namespace OCR2Geometry.Import
                 };
 
                 result.Points.Add(point);
-                nextNumber = number + 1;
+                if (numberMissing) result.ReviewDetails.Add("Line " + (i + 1) + ": coordinates retained; enter Point manually.");
+                if (number.HasValue && number.Value < int.MaxValue) nextNumber = number.Value + 1;
             }
 
             return result;
         }
 
-        private static OcrColumnProfile[] BuildOcrColumnProfiles(string[] lines)
+        private static OcrColumnProfile[] BuildOcrColumnProfiles(string[] lines, int expectedColumns, bool numbered)
         {
             var samples = new[]
             {
@@ -145,14 +159,15 @@ namespace OCR2Geometry.Import
                     continue;
                 }
 
-                var values = ExtractValues(line);
-                if (values.Count < 2)
+                var values = GetOcrValues(line, expectedColumns, numbered);
+                if (values.Count != expectedColumns)
                 {
                     continue;
                 }
 
                 int pointNumber;
-                var hasExplicitNumber = HasExplicitPointNumber(values, out pointNumber);
+                var hasExplicitNumber = numbered;
+                if (numbered && !TryParseInt(values[0], out pointNumber)) continue;
                 var firstCoordinate = hasExplicitNumber ? 1 : 0;
 
                 for (var column = 0; column < 3; column++)
@@ -184,7 +199,7 @@ namespace OCR2Geometry.Import
         private static OcrColumnProfile BuildProfile(List<Tuple<int, int>> samples)
         {
             var profile = new OcrColumnProfile();
-            if (samples.Count == 0)
+            if (samples.Count < 2)
             {
                 return profile;
             }
@@ -204,7 +219,9 @@ namespace OCR2Geometry.Import
 
             profile.DecimalPlaces = mostCommonDecimalPlaces;
             profile.IntegerDigits = mostCommonIntegerDigits;
-            profile.IsValid = mostCommonDecimalPlaces > 0;
+            profile.IsValid = mostCommonDecimalPlaces > 0 &&
+                matching.Count(s => s.Item1 == mostCommonIntegerDigits) >= 2 &&
+                matching.Count(s => s.Item1 == mostCommonIntegerDigits) * 2 > samples.Count;
             return profile;
         }
 
@@ -292,6 +309,27 @@ namespace OCR2Geometry.Import
             return Math.Abs((long)pointNumber) < 100000;
         }
 
+        private static List<string> GetOcrValues(string line, int expectedColumns, bool numbered)
+        {
+            var values = ExtractOcrValues(line);
+            int ignored;
+            // Only unambiguous decimal-leading text rows may omit Point.
+            // A leading integer could be Point with a missing coordinate: do not shift it.
+            if (numbered && !line.Contains("\t") && values.Count == expectedColumns - 1
+                && values.Count > 0 && !TryParseInt(values[0], out ignored)) values.Insert(0, "?");
+            return values;
+        }
+
+        private static List<string> ExtractOcrValues(string line)
+        {
+            // Tabs from cell OCR are hard column boundaries, including empty cells.
+            if (line.Contains("\t")) return line.Split(new[] { '\t' }, StringSplitOptions.None).Select(v => v.Trim()).ToList();
+            // A comma is a decimal separator in OCR, never a CSV delimiter.
+            // Tesseract may insert whitespace between a separator and its digits.
+            var normalized = Regex.Replace(line, @"(?<=\d)\s*([.,])\s*(?=\d{1,4}(?:\s|$))", "$1");
+            return NumberRegex.Matches(normalized).Cast<Match>().Select(m => m.Value).ToList();
+        }
+
         private static List<string> ExtractValues(string line)
         {
             if (line.Contains("\t"))
@@ -325,7 +363,8 @@ namespace OCR2Geometry.Import
         private static bool TryParseDouble(string value, out double result)
         {
             var normalized = value.Trim().Replace(',', '.');
-            return double.TryParse(normalized, NumberStyles.Float, CultureInfo.InvariantCulture, out result);
+            return double.TryParse(normalized, NumberStyles.Float, CultureInfo.InvariantCulture, out result)
+                && !double.IsNaN(result) && !double.IsInfinity(result);
         }
 
         private static bool TryParseInt(string value, out int result)

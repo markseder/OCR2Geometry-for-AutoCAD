@@ -1,3 +1,5 @@
+using System;
+using System.Linq;
 using System.Collections.Generic;
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
@@ -10,6 +12,8 @@ namespace OCR2Geometry.AutoCAD
     {
         public static void CreatePoints(IEnumerable<CoordinatePoint> points, double textHeight = 2.5, double textOffset = 2.5)
         {
+            var rows = points.ToList();
+            if (rows.Any(p => p.IsNumberMissing)) throw new InvalidOperationException("Fill all Point numbers before creating geometry.");
             var document = Application.DocumentManager.MdiActiveDocument;
             var database = document.Database;
 
@@ -19,7 +23,7 @@ namespace OCR2Geometry.AutoCAD
                 var blockTable = (BlockTable)transaction.GetObject(database.BlockTableId, OpenMode.ForRead);
                 var modelSpace = (BlockTableRecord)transaction.GetObject(blockTable[BlockTableRecord.ModelSpace], OpenMode.ForWrite);
 
-                foreach (var point in points)
+                foreach (var point in rows)
                 {
                     var position = new Point3d(point.X, point.Y, point.Z);
 

@@ -19,6 +19,7 @@ namespace OCR2Geometry.UI
     {
         private readonly IOcrEngine _ocrEngine;
         private string _selectedImagePath;
+        private string _ocrDetails = string.Empty;
 
         public ObservableCollection<CoordinatePoint> Points { get; }
 
@@ -85,6 +86,8 @@ namespace OCR2Geometry.UI
 
         private void SetSelectedImage(string imagePath, string status)
         {
+            _ocrDetails = string.Empty;
+            OcrDetailsButton.IsEnabled = false;
             _selectedImagePath = imagePath;
             SelectedImageTextBox.Text = imagePath;
             PreviewImageButton.IsEnabled = true;
@@ -120,11 +123,17 @@ namespace OCR2Geometry.UI
 
             try
             {
+                _ocrDetails = string.Empty;
+                OcrDetailsButton.IsEnabled = false;
                 ImportStatusText.Text = "Recognizing image with " + _ocrEngine.Name + "...";
-                var result = _ocrEngine.Recognize(_selectedImagePath);
+                var result = _ocrEngine.Recognize(_selectedImagePath,
+                    OcrLayoutComboBox.SelectedIndex == 0 ? 4 : OcrLayoutComboBox.SelectedIndex == 3 ? 2 : 3,
+                    OcrLayoutComboBox.SelectedIndex <= 1, (OcrMode)OcrModeComboBox.SelectedIndex);
+                _ocrDetails = result.Diagnostics + "\r\nSelected OCR text:\r\n" + result.Text;
+                OcrDetailsButton.IsEnabled = true;
                 if (string.IsNullOrWhiteSpace(result.Text))
                 {
-                    ShowError("OCR did not return any text.");
+                    ShowError("OCR did not return coordinate text. Open OCR details. For Table cells, capture the complete grid or try Text mode.");
                     ImportStatusText.Text = "OCR returned no text";
                     return;
                 }
@@ -212,18 +221,29 @@ namespace OCR2Geometry.UI
             }
 
             var result = isOcr
-                ? TextCoordinateParser.ParseOcr(text, startNumber)
+                ? TextCoordinateParser.ParseOcr(text, startNumber,
+                    OcrLayoutComboBox.SelectedIndex == 0 ? 4 : OcrLayoutComboBox.SelectedIndex == 3 ? 2 : 3,
+                    OcrLayoutComboBox.SelectedIndex <= 1)
                 : TextCoordinateParser.Parse(text, startNumber);
+
+            if (isOcr)
+            {
+                _ocrDetails += "\r\nParsing: " + result.Points.Count + " accepted; " + result.InvalidLineNumbers.Count + " skipped.\r\n"
+                    + string.Join("\r\n", result.InvalidLineDetails) + "\r\n" + string.Join("\r\n", result.ReviewDetails);
+            }
 
             if (result.Points.Count == 0)
             {
-                ShowError("No coordinate rows were recognized in " + sourceName + ".");
+                ImportStatusText.Text = "No rows imported; existing table unchanged. Open OCR details.";
+                ShowError("No coordinate rows were recognized in " + sourceName +
+                    (isOcr ? ". Check the OCR column order and image quality." : "."));
                 return;
             }
 
             Points.Clear();
             foreach (var point in result.Points)
             {
+                point.NeedsOcrReview = isOcr;
                 Points.Add(point);
             }
 
@@ -232,6 +252,9 @@ namespace OCR2Geometry.UI
             var recoveryText = result.RecoveredDecimalCount > 0
                 ? "; recovered decimal separators: " + result.RecoveredDecimalCount
                 : string.Empty;
+            var missingNumbers = Points.Count(p => p.IsNumberMissing);
+            if (missingNumbers > 0) recoveryText += "; enter Point for " + missingNumbers + " row(s)";
+            if (isOcr) recoveryText += "; verify highlighted OCR rows";
 
             if (result.InvalidLineNumbers.Count > 0)
             {
@@ -274,7 +297,7 @@ namespace OCR2Geometry.UI
 
         private void SwapXY_Click(object sender, RoutedEventArgs e)
         {
-            CommitGridEdits();
+            if (!CommitGridEdits()) return;
 
             foreach (var point in Points)
             {
@@ -320,13 +343,15 @@ namespace OCR2Geometry.UI
 
         private void CreatePoints_Click(object sender, RoutedEventArgs e)
         {
-            CommitGridEdits();
+            if (!CommitGridEdits()) return;
 
             if (Points.Count == 0)
             {
                 ShowError("The coordinate table is empty.");
                 return;
             }
+
+            if (!ValidatePointNumbers()) return;
 
             double textHeight;
             if (!TryParsePositiveDouble(TextHeightTextBox.Text, out textHeight))
@@ -352,13 +377,15 @@ namespace OCR2Geometry.UI
 
         private void ExportCsv_Click(object sender, RoutedEventArgs e)
         {
-            CommitGridEdits();
+            if (!CommitGridEdits()) return;
 
             if (Points.Count == 0)
             {
                 ShowError("The coordinate table is empty.");
                 return;
             }
+
+            if (!ValidatePointNumbers()) return;
 
             var dialog = new SaveFileDialog
             {
@@ -389,6 +416,15 @@ namespace OCR2Geometry.UI
             }
         }
 
+        private void OcrDetails_Click(object sender, RoutedEventArgs e)
+        {
+            var textBox = new TextBox { Text = _ocrDetails, IsReadOnly = true, AcceptsReturn = true,
+                TextWrapping = TextWrapping.NoWrap, VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, Margin = new Thickness(12) };
+            new Window { Title = "OCR details — raw text and skipped rows", Owner = this,
+                Width = 820, Height = 550, Content = textBox, WindowStartupLocation = WindowStartupLocation.CenterOwner }.ShowDialog();
+        }
+
         private void AboutDonate_Click(object sender, RoutedEventArgs e)
         {
             var window = new AboutWindow
@@ -398,10 +434,34 @@ namespace OCR2Geometry.UI
             window.ShowDialog();
         }
 
-        private void CommitGridEdits()
+        private bool CommitGridEdits()
         {
-            PointsGrid.CommitEdit(DataGridEditingUnit.Cell, true);
-            PointsGrid.CommitEdit(DataGridEditingUnit.Row, true);
+            if (PointsGrid.CommitEdit(DataGridEditingUnit.Cell, true) && PointsGrid.CommitEdit(DataGridEditingUnit.Row, true)) return true;
+            ShowError("Correct the invalid cell value before continuing.");
+            return false;
+        }
+
+        private bool ValidatePointNumbers()
+        {
+            if (!Points.Any(p => p.IsNumberMissing)) return true;
+            ShowError("Some Point numbers are empty. Enter them in the highlighted cells or click Renumber from Start.");
+            return false;
+        }
+
+        private void Renumber_Click(object sender, RoutedEventArgs e)
+        {
+            if (!CommitGridEdits()) return;
+            int start;
+            if (!TryGetStartNumber(out start)) return;
+            var displayed = PointsGrid.Items.Cast<CoordinatePoint>().ToList();
+            if ((long)start + displayed.Count - 1 > int.MaxValue)
+            {
+                ShowError("Numbering exceeds the maximum supported integer.");
+                return;
+            }
+            for (var i = 0; i < displayed.Count; i++) displayed[i].Number = start + i;
+            PointsGrid.Items.Refresh();
+            ImportStatusText.Text = displayed.Count + " point numbers replaced starting at " + start;
         }
 
         private bool TryGetStartNumber(out int startNumber, bool showError = true)
@@ -426,7 +486,8 @@ namespace OCR2Geometry.UI
                 return startNumber;
             }
 
-            return Points.Max(p => p.Number) + 1;
+            var maximum = Points.Where(p => p.Number.HasValue).Select(p => p.Number.Value).DefaultIfEmpty(startNumber - 1).Max();
+            return maximum < int.MaxValue ? maximum + 1 : startNumber;
         }
 
         private static bool TryParsePositiveDouble(string value, out double result)

@@ -36,7 +36,7 @@
 
         <TextBlock Grid.Row="1"
                    Margin="0,6,0,12"
-                   Text="AutoCAD 2020 — local OCR v0.5.0 (no Python)"
+                   Text="AutoCAD 2020 — local OCR v0.6.0 revision 4 (no Python)"
                    Foreground="Gray" />
 
         <Grid Grid.Row="2" Margin="0,0,0,12">
@@ -66,7 +66,8 @@
                         Content="Recognize OCR" Click="RecognizeImage_Click" IsEnabled="False" x:Name="RecognizeImageButton" />
             </Grid>
 
-            <Grid Grid.Row="1" Margin="0,10,0,0">
+            <StackPanel Grid.Row="1">
+            <Grid Margin="0,10,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
@@ -78,8 +79,24 @@
                 <Button Grid.Column="0" Width="150" Height="32" Margin="0,0,8,0" Content="Paste coordinates" Click="PasteCoordinates_Click" />
                 <Button Grid.Column="1" Width="120" Height="32" Margin="0,0,8,0" Content="Import CSV/TXT" Click="ImportTextFile_Click" />
                 <Button Grid.Column="2" Width="90" Height="32" Content="Clear table" Click="ClearTable_Click" />
-                <TextBlock Grid.Column="4" x:Name="ImportStatusText" VerticalAlignment="Center" Foreground="Gray" Text="Ready" />
+                <ComboBox Grid.Column="3" x:Name="OcrLayoutComboBox" Width="160" HorizontalAlignment="Left" Margin="10,0,10,0" SelectedIndex="0" ToolTip="Column order in the source image (OCR only)">
+                    <ComboBoxItem Content="OCR: Point X Y Z" />
+                    <ComboBoxItem Content="OCR: Point X Y" />
+                    <ComboBoxItem Content="OCR: X Y Z" />
+                    <ComboBoxItem Content="OCR: X Y" />
+                </ComboBox>
+
             </Grid>
+            <WrapPanel Margin="0,8,0,0">
+                <ComboBox x:Name="OcrModeComboBox" Width="170" SelectedIndex="0" Margin="0,0,8,0" ToolTip="Table cells requires a complete, straight grid around the table">
+                    <ComboBoxItem Content="Mode: Auto" />
+                    <ComboBoxItem Content="Mode: Table cells" />
+                    <ComboBoxItem Content="Mode: Text" />
+                </ComboBox>
+                <Button x:Name="OcrDetailsButton" Content="OCR details" Click="OcrDetails_Click" IsEnabled="False" Padding="10,3" Margin="0,0,10,0" />
+                <TextBlock x:Name="ImportStatusText" VerticalAlignment="Center" Foreground="Gray" Text="Ready" TextWrapping="Wrap" />
+            </WrapPanel>
+            </StackPanel>
         </Grid>
 
         <Grid Grid.Row="3" Margin="0,0,0,12">
@@ -100,8 +117,29 @@
                       HeadersVisibility="Column"
                       GridLinesVisibility="Horizontal"
                       CellEditEnding="PointsGrid_CellEditEnding">
+                <DataGrid.RowStyle>
+                    <Style TargetType="DataGridRow">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding NeedsOcrReview}" Value="True">
+                                <Setter Property="Background" Value="#FFFFF2CC" />
+                                <Setter Property="ToolTip" Value="OCR result: verify Point, signs and all coordinates against the source. See OCR details for alternate readings." />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </DataGrid.RowStyle>
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="Point" Binding="{Binding Number}" Width="85" IsReadOnly="True" />
+                    <DataGridTextColumn Header="Point" Binding="{Binding Number, UpdateSourceTrigger=LostFocus, ValidatesOnExceptions=True}" Width="85">
+                        <DataGridTextColumn.CellStyle>
+                            <Style TargetType="DataGridCell">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsNumberMissing}" Value="True">
+                                        <Setter Property="Background" Value="#FFFFB4A2" />
+                                        <Setter Property="ToolTip" Value="Point was not recognized. Enter a whole number or use Renumber from Start." />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGridTextColumn.CellStyle>
+                    </DataGridTextColumn>
 
                     <DataGridTextColumn Header="X" Binding="{Binding X, UpdateSourceTrigger=LostFocus}" Width="*">
                         <DataGridTextColumn.CellStyle>
@@ -193,6 +231,7 @@
 
             <Button Grid.Column="0" Width="150" Height="36" Margin="0,0,8,0" Content="Create points" Click="CreatePoints_Click" />
             <Button Grid.Column="1" Width="120" Height="36" Content="Export CSV" Click="ExportCsv_Click" />
+            <Button Grid.Column="2" Width="165" Height="36" HorizontalAlignment="Left" Margin="8,0,0,0" Content="Renumber from Start" Click="Renumber_Click" ToolTip="Replace ALL point numbers in current displayed row order, starting at Start number" />
             <Button Grid.Column="3" Width="90" Height="36" Content="Close" IsCancel="True" />
         </Grid>
     </Grid>

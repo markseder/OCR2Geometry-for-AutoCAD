@@ -5,7 +5,7 @@ namespace OCR2Geometry.Models
 {
     public sealed class CoordinatePoint : INotifyPropertyChanged
     {
-        private int _number;
+        private int? _number;
         private double _x;
         private double _y;
         private double _z;
@@ -13,9 +13,11 @@ namespace OCR2Geometry.Models
         private bool _isYRecovered;
         private bool _isZRecovered;
 
+        public bool NeedsOcrReview { get; set; }
+
         public event PropertyChangedEventHandler PropertyChanged;
 
-        public int Number
+        public int? Number
         {
             get => _number;
             set
@@ -24,9 +26,12 @@ namespace OCR2Geometry.Models
                 {
                     _number = value;
                     OnPropertyChanged();
+                    OnPropertyChanged(nameof(IsNumberMissing));
                 }
             }
         }
+
+        public bool IsNumberMissing => !Number.HasValue;
 
         public double X
         {
@@ -106,7 +111,7 @@ namespace OCR2Geometry.Models
             }
         }
 
-        public CoordinatePoint(int number, double x, double y, double z = 0.0)
+        public CoordinatePoint(int? number, double x, double y, double z = 0.0)
         {
             _number = number;
             _x = x;
