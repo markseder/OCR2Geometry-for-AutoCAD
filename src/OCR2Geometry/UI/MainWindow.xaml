@@ -87,9 +87,10 @@
                       HeadersVisibility="Column"
                       GridLinesVisibility="Horizontal">
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="Point" Binding="{Binding Number}" Width="100" IsReadOnly="True" />
+                    <DataGridTextColumn Header="Point" Binding="{Binding Number}" Width="85" IsReadOnly="True" />
                     <DataGridTextColumn Header="X" Binding="{Binding X, UpdateSourceTrigger=LostFocus}" Width="*" />
                     <DataGridTextColumn Header="Y" Binding="{Binding Y, UpdateSourceTrigger=LostFocus}" Width="*" />
+                    <DataGridTextColumn Header="Z" Binding="{Binding Z, UpdateSourceTrigger=LostFocus}" Width="*" />
                 </DataGrid.Columns>
             </DataGrid>
 
