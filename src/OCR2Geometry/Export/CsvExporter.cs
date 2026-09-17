@@ -12,16 +12,17 @@ namespace OCR2Geometry.Export
         {
             using (var writer = new StreamWriter(path, false, new UTF8Encoding(true)))
             {
-                writer.WriteLine("Point,X,Y");
+                writer.WriteLine("Point,X,Y,Z");
 
                 foreach (var point in points)
                 {
                     writer.WriteLine(string.Format(
                         CultureInfo.InvariantCulture,
-                        "{0},{1:0.########},{2:0.########}",
+                        "{0},{1:0.########},{2:0.########},{3:0.########}",
                         point.Number,
                         point.X,
-                        point.Y));
+                        point.Y,
+                        point.Z));
                 }
             }
         }
