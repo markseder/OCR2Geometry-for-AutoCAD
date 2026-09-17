@@ -1,47 +1,36 @@
 # OCR2Geometry for AutoCAD
 
-OCR2Geometry for AutoCAD is a lightweight AutoCAD plugin that converts coordinate tables from text, files, and eventually images into drawing geometry.
+OCR2Geometry for AutoCAD is a lightweight AutoCAD plugin that converts coordinate tables from text, files, and images into drawing geometry.
 
 The first target is **AutoCAD 2020**, using **C# / .NET Framework / WPF**.
 
-## MVP scope
+## Current development build — v0.4 local OCR
 
-- Work with planar X/Y coordinates
-- Review and edit values before import
-- Swap X and Y columns
-- Create AutoCAD `DBPoint` objects
-- Add point-number `DBText` labels next to points
-- Import coordinates from clipboard / CSV / TXT
-- Export coordinates to CSV
-- OCR from images in a later stage
-
-No latitude/longitude or coordinate-system transformation is planned for the first MVP.
-
-## Current development build — v0.3
-
-The current development branch contains:
+Already working and validated in AutoCAD 2020:
 
 - `OCR2GEOMETRY` command
 - editable X/Y coordinate table
-- add and delete table rows
+- add/delete rows
 - X/Y swap
 - configurable start point number
 - configurable text height
-- creation of `DBPoint` objects in Model Space
-- creation of point-number `DBText` labels
-- CSV export with `Point,X,Y` columns
-- paste coordinate text from clipboard
-- import coordinate rows from CSV/TXT
-- parsing of tab, semicolon, whitespace and plugin CSV formats
-- skipped-line reporting for unrecognized text rows
+- create `DBPoint` objects and numbered `DBText` labels
+- paste coordinates from clipboard
+- import CSV/TXT
+- export CSV
+- preserve explicit point numbers from imported data
+- report skipped/unrecognized text rows
 
-Three sample coordinates are preloaded for quick testing:
+New in the v0.4 development branch:
 
-```text
-1    512345.23    6876543.11
-2    512351.86    6876551.42
-3    512360.14    6876567.30
-```
+- select PNG/JPG/JPEG/BMP/TIF/TIFF image
+- paste an image directly from the Windows clipboard
+- intended workflow: `Win+Shift+S` -> capture table -> **Paste image**
+- preview the selected/pasted image inside the plugin
+- local OCR using Tesseract 5 through a .NET package
+- no Python, pip, virtual environment or external Python process
+- recognized OCR text is passed into the existing coordinate parser
+- first OCR run downloads `eng.traineddata` once into `%LOCALAPPDATA%\OCR2Geometry\tessdata`
 
 ## Build requirements
 
@@ -49,8 +38,9 @@ Three sample coordinates are preloaded for quick testing:
 - AutoCAD 2020 installed
 - Visual Studio with .NET desktop development tools
 - .NET Framework 4.7.2 targeting pack
+- NuGet package restore enabled
 
-The project expects the AutoCAD managed API assemblies in the default installation directory:
+The project expects the AutoCAD managed API assemblies in:
 
 ```text
 C:\Program Files\Autodesk\AutoCAD 2020\acdbmgd.dll
@@ -58,29 +48,20 @@ C:\Program Files\Autodesk\AutoCAD 2020\acmgd.dll
 C:\Program Files\Autodesk\AutoCAD 2020\accoremgd.dll
 ```
 
-If AutoCAD is installed elsewhere, set the MSBuild property `Acad2020Dir` to the correct folder.
-
-AutoCAD references use `Copy Local = False` so Autodesk DLLs are not copied into the plugin output or repository.
-
-## Build and test
+## Build and test v0.4
 
 1. Open `OCR2Geometry.sln` in Visual Studio.
-2. Build the solution.
-3. Start AutoCAD 2020.
-4. Run `NETLOAD` and load `OCR2Geometry.dll`.
-5. Run `OCR2GEOMETRY`.
-6. Test **Paste coordinates** using copied rows such as:
+2. Build the solution. Visual Studio should restore the `Tesseract` NuGet package automatically.
+3. In AutoCAD 2020 run `NETLOAD` and load the built `OCR2Geometry.dll`.
+4. Run `OCR2GEOMETRY`.
+5. Press `Win+Shift+S` and capture only the coordinate table.
+6. Click **Paste image** and verify the preview appears.
+7. Click **Recognize OCR**.
+8. On the first OCR run, allow the plugin to download the English Tesseract language model once.
+9. Verify recognized coordinate rows populate the table.
+10. Correct any OCR mistakes manually, then use **Create points**.
 
-```text
-1 512345.23 6876543.11
-2 512351.86 6876551.42
-3 512360.14 6876567.30
-```
-
-7. Test **Import CSV/TXT** using a CSV exported by the plugin.
-8. Verify add/delete, `Swap X/Y`, start number and text height.
-9. Click **Create points** and verify geometry/labels in Model Space.
-10. Export CSV and verify the resulting file.
+You can still use **Select image** for saved screenshots/photos and all v0.3 CSV/TXT/clipboard-text workflows remain available.
 
 ## Development stages
 
@@ -104,46 +85,34 @@ AutoCAD references use `Copy Local = False` so Autodesk DLLs are not copied into
 - [x] CSV export
 - [x] Validated in AutoCAD 2020
 
-### v0.3 — Import and validation foundation
+### v0.3 — Import and validation
 
 - [x] Clipboard text import
 - [x] CSV/TXT import
 - [x] Coordinate text parser
 - [x] Invalid-line reporting
-- [ ] Validate v0.3 build in AutoCAD 2020
+- [x] Preserve explicit imported point numbers
+- [x] Validated in AutoCAD 2020
 
-### v0.4 — OCR
+### v0.4 — Image OCR
 
-- [ ] Image selection
-- [ ] Image preview
-- [ ] OCR engine integration
-- [ ] Feed recognized text into the existing coordinate parser
+- [x] Image selection
+- [x] Image preview
+- [x] Paste image from clipboard
+- [x] OCR engine abstraction
+- [x] Local .NET Tesseract OCR adapter
+- [x] Feed OCR text into the coordinate parser
+- [ ] Validate OCR quality on real coordinate-table screenshots
 - [ ] Recognition confidence / validation workflow
 
 ### Later improvements
 
+- [ ] Bundle/fallback language data for fully offline first launch
+- [ ] OCR preprocessing for low-contrast/scanned tables
 - [ ] User-defined text offset
 - [ ] Improved AutoCAD layer/settings workflow
 - [ ] Support additional AutoCAD versions
 
-## Project structure
-
-```text
-OCR2Geometry-for-AutoCAD/
-├── OCR2Geometry.sln
-├── src/
-│   └── OCR2Geometry/
-│       ├── AutoCAD/
-│       ├── Commands/
-│       ├── Export/
-│       ├── Import/
-│       ├── Models/
-│       ├── Properties/
-│       ├── UI/
-│       └── OCR2Geometry.csproj
-└── README.md
-```
-
 ## Status
 
-Active development. v0.1 and v0.2 have been validated in AutoCAD 2020. v0.3 is ready for local build/testing before merge to `main`.
+Active development. v0.3 is merged into `main`; v0.4 local OCR is ready for build and real-table testing before merge.

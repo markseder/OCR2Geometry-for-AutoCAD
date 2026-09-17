@@ -21,7 +21,7 @@ namespace OCR2Geometry.AutoCAD
 
                 foreach (var point in points)
                 {
-                    var position = new Point3d(point.X, point.Y, 0.0);
+                    var position = new Point3d(point.X, point.Y, point.Z);
 
                     var dbPoint = new DBPoint(position);
                     modelSpace.AppendEntity(dbPoint);
@@ -29,7 +29,7 @@ namespace OCR2Geometry.AutoCAD
 
                     var label = new DBText
                     {
-                        Position = new Point3d(point.X + textOffset, point.Y + textOffset, 0.0),
+                        Position = new Point3d(point.X + textOffset, point.Y + textOffset, point.Z),
                         Height = textHeight,
                         TextString = point.Number.ToString()
                     };
