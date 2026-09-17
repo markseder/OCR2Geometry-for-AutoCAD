@@ -19,6 +19,7 @@ namespace OCR2Geometry.UI
     {
         private readonly IOcrEngine _ocrEngine;
         private string _selectedImagePath;
+        private string _ocrDetails = string.Empty;
 
         public ObservableCollection<CoordinatePoint> Points { get; }
 
@@ -85,6 +86,8 @@ namespace OCR2Geometry.UI
 
         private void SetSelectedImage(string imagePath, string status)
         {
+            _ocrDetails = string.Empty;
+            OcrDetailsButton.IsEnabled = false;
             _selectedImagePath = imagePath;
             SelectedImageTextBox.Text = imagePath;
             PreviewImageButton.IsEnabled = true;
@@ -120,13 +123,17 @@ namespace OCR2Geometry.UI
 
             try
             {
+                _ocrDetails = string.Empty;
+                OcrDetailsButton.IsEnabled = false;
                 ImportStatusText.Text = "Recognizing image with " + _ocrEngine.Name + "...";
                 var result = _ocrEngine.Recognize(_selectedImagePath,
                     OcrLayoutComboBox.SelectedIndex == 0 ? 4 : OcrLayoutComboBox.SelectedIndex == 3 ? 2 : 3,
-                    OcrLayoutComboBox.SelectedIndex <= 1);
+                    OcrLayoutComboBox.SelectedIndex <= 1, (OcrMode)OcrModeComboBox.SelectedIndex);
+                _ocrDetails = result.Diagnostics + "\r\nSelected OCR text:\r\n" + result.Text;
+                OcrDetailsButton.IsEnabled = true;
                 if (string.IsNullOrWhiteSpace(result.Text))
                 {
-                    ShowError("OCR did not return any text.");
+                    ShowError("OCR did not return coordinate text. Open OCR details. For Table cells, capture the complete grid or try Text mode.");
                     ImportStatusText.Text = "OCR returned no text";
                     return;
                 }
@@ -219,8 +226,15 @@ namespace OCR2Geometry.UI
                     OcrLayoutComboBox.SelectedIndex <= 1)
                 : TextCoordinateParser.Parse(text, startNumber);
 
+            if (isOcr)
+            {
+                _ocrDetails += "\r\nParsing: " + result.Points.Count + " accepted; " + result.InvalidLineNumbers.Count + " skipped.\r\n"
+                    + string.Join("\r\n", result.InvalidLineDetails);
+            }
+
             if (result.Points.Count == 0)
             {
+                ImportStatusText.Text = "No rows imported; existing table unchanged. Open OCR details.";
                 ShowError("No coordinate rows were recognized in " + sourceName +
                     (isOcr ? ". Check the OCR column order and image quality." : "."));
                 return;
@@ -392,6 +406,15 @@ namespace OCR2Geometry.UI
             {
                 ShowError(ex.Message);
             }
+        }
+
+        private void OcrDetails_Click(object sender, RoutedEventArgs e)
+        {
+            var textBox = new TextBox { Text = _ocrDetails, IsReadOnly = true, AcceptsReturn = true,
+                TextWrapping = TextWrapping.NoWrap, VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, Margin = new Thickness(12) };
+            new Window { Title = "OCR details — raw text and skipped rows", Owner = this,
+                Width = 820, Height = 550, Content = textBox, WindowStartupLocation = WindowStartupLocation.CenterOwner }.ShowDialog();
         }
 
         private void AboutDonate_Click(object sender, RoutedEventArgs e)

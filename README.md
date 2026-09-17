@@ -151,3 +151,16 @@ Reference values from the screenshot:
 | 5 | 70850.81 | 63803.75 | 445.00 |
 
 Do not merge v0.6.0 until the user tests it in AutoCAD 2020 and explicitly approves.
+
+### v0.6.0 revision 2 — OCR modes and diagnostics
+
+- Auto (default): uses individual cells when a complete straight grid matches the selected layout, otherwise uses Text. It does not silently replace an unreadable cell result with a guessed number.
+- Table cells: detects the full grid, crops each cell to its ink with white padding, then tries SingleLine and SingleWord. Both valid readings must agree numerically. Missing/conflicting cells remain marked in diagnostics, and affected rows are skipped without shifting columns or inventing point numbers.
+- Text: previous multi-pass recognition for images without a complete grid.
+- OCR details shows raw readings, chosen text, and specific skip reasons, even when no rows import. Copy text from this window when reporting an issue.
+- Capture only the source table including all outer borders and a small white margin. Skewed, broken, merged-cell or partly cropped grids are not supported by Table cells; use Text.
+- DLL file version: 0.6.0.2; assembly version stays 0.6.0.0.
+
+Validation: a separate Tesseract CLI experiment on the latest screenshot's table crop found 6 horizontal/5 vertical boundaries. Tight cell crops with padding and SingleLine/SingleWord yielded all 20 expected values, including Point 1 and negative Y values (invalid alternatives rejected). This experiment uses a different preprocessing library and does not prove .NET/WPF runtime behavior. C# compilation, regression harness execution, and AutoCAD 2020 tests remain unavailable in this environment.
+
+Acceptance: rebuild, restart AutoCAD to unload the old DLL, NETLOAD, verify revision 2 label, choose Point X Y Z and Table cells, recognize the original five-row table. Expect Point 1 / X 252956.80 / Y -128368.72 / Z 725.50 and compare all other rows. Check Auto and Text, a missing cell, no detected grid, all four layouts, and OCR details. Keep PR unmerged pending approval.

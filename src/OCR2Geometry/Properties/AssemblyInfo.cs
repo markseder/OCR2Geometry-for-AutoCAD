@@ -8,7 +8,7 @@ using OCR2Geometry.Commands;
 [assembly: AssemblyCompany("OCR2Geometry")]
 [assembly: AssemblyProduct("OCR2Geometry for AutoCAD")]
 [assembly: AssemblyVersion("0.6.0.0")]
-[assembly: AssemblyFileVersion("0.6.0.0")]
+[assembly: AssemblyFileVersion("0.6.0.2")]
 [assembly: ComVisible(false)]
 [assembly: Guid("9c678cf3-6cf5-4610-b405-762236d77a29")]
 [assembly: ExtensionApplication(typeof(OCR2Geometry.Plugin))]

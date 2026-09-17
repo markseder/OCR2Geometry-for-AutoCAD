@@ -36,7 +36,7 @@
 
         <TextBlock Grid.Row="1"
                    Margin="0,6,0,12"
-                   Text="AutoCAD 2020 — local OCR v0.6.0 (no Python)"
+                   Text="AutoCAD 2020 — local OCR v0.6.0 revision 2 (no Python)"
                    Foreground="Gray" />
 
         <Grid Grid.Row="2" Margin="0,0,0,12">
@@ -66,7 +66,8 @@
                         Content="Recognize OCR" Click="RecognizeImage_Click" IsEnabled="False" x:Name="RecognizeImageButton" />
             </Grid>
 
-            <Grid Grid.Row="1" Margin="0,10,0,0">
+            <StackPanel Grid.Row="1">
+            <Grid Margin="0,10,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
@@ -84,8 +85,18 @@
                     <ComboBoxItem Content="OCR: X Y Z" />
                     <ComboBoxItem Content="OCR: X Y" />
                 </ComboBox>
-                <TextBlock Grid.Column="4" x:Name="ImportStatusText" VerticalAlignment="Center" Foreground="Gray" Text="Ready" />
+
             </Grid>
+            <WrapPanel Margin="0,8,0,0">
+                <ComboBox x:Name="OcrModeComboBox" Width="170" SelectedIndex="0" Margin="0,0,8,0" ToolTip="Table cells requires a complete, straight grid around the table">
+                    <ComboBoxItem Content="Mode: Auto" />
+                    <ComboBoxItem Content="Mode: Table cells" />
+                    <ComboBoxItem Content="Mode: Text" />
+                </ComboBox>
+                <Button x:Name="OcrDetailsButton" Content="OCR details" Click="OcrDetails_Click" IsEnabled="False" Padding="10,3" Margin="0,0,10,0" />
+                <TextBlock x:Name="ImportStatusText" VerticalAlignment="Center" Foreground="Gray" Text="Ready" TextWrapping="Wrap" />
+            </WrapPanel>
+            </StackPanel>
         </Grid>
 
         <Grid Grid.Row="3" Margin="0,0,0,12">

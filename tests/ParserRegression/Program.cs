@@ -11,6 +11,12 @@ internal static class Program
 
     private static void Main()
     {
+        var cells = TextCoordinateParser.ParseOcr("1\t252956,80\t-128368,72\t725,50\n2\t250123,60\t-124965,21\t786,00", 1);
+        Check(cells.Points.Count == 2 && cells.Points[0].Number == 1 && cells.Points[0].Y == -128368.72, "First grid row and negative coordinates survive");
+        var missing = TextCoordinateParser.ParseOcr("?\t252956,80\t-128368,72\t725,50\n2\t?\t-124965,21\t786,00", 1);
+        Check(missing.Points.Count == 0 && missing.InvalidLineDetails.Count == 2, "Missing cells preserve columns and produce diagnostics");
+        var nonfinite = TextCoordinateParser.ParseOcr("1\tNaN\t12\t13", 1);
+        Check(nonfinite.Points.Count == 0, "Nonfinite values rejected");
         const string rows = "1 72968,58 65990,98 725,50\n2 70174,18 69426,41 786,00\n3 68041,52 71178,59 865,70\n4 66510,06 69358,06 800,00\n5 70850,81 63803,75 445,00";
         var parsed = TextCoordinateParser.ParseOcr(rows, 1);
         Check(parsed.Points.Count == 5 && parsed.Points[0].Number == 1 &&
