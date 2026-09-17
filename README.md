@@ -179,3 +179,14 @@ Revision 2 failed the user's real AutoCAD test: SingleWord removed punctuation a
 Regression cases cover the supplied log's punctuation, duplicate signs, coordinate-selection priority, and point agreement rules. The C# test harness and full AutoCAD plugin could not be built/run here (no C# compiler or AutoCAD). Static markup/handler/project checks and git diff --check are the available validation; numeric accuracy still needs the user's Windows test. Auto can be slower because it also evaluates text candidates. First-valid selection and repeated-number agreement do not guarantee OCR accuracy.
 
 Test both Auto and Table cells on the ORIGINAL table image, including all borders. Verify all five rows and signs, especially Point 1, Point 3 and X=246443.23 for Point 4. If a number remains unreadable, send OCR details plus the original cropped input PNG (the screenshot preview is rescaled and is not the same OCR input).
+
+### v0.6.0 revision 4 — keep coordinates when Point is unreadable
+
+- Point is now a nullable, editable integer. Missing numbers display as empty, salmon-highlighted cells with an explanatory tooltip.
+- Cell OCR retains a row with an unreadable Point when X/Y(/Z) are valid. Text OCR also retains a row missing its leading Point when the remaining field count matches the selected layout and the first token is not an integer. Ambiguous integer-leading short text rows are still skipped instead of shifting coordinates.
+- Auto selection counts retained coordinate rows and prefers fewer missing numbers on otherwise equal results. Diagnostics distinguish retained rows awaiting Point entry from skipped coordinate rows.
+- Renumber from Start explicitly replaces ALL numbers in the current displayed order, starting at Start number. Range overflow is checked before changing any number. Manual Point edits update the missing-number highlight.
+- Create points and CSV export require filled Point numbers and committed valid edits; geometry creation also checks missing numbers before opening a transaction.
+- The actual user log is added as a regression case: expect five rows, first Point empty, first XYZ 252956.80 / -128368.72 / 725.50, and subsequent Points 2/3/4/5 unchanged. Other cases cover empty tab cells, Point XY, and ambiguous integer-leading rows.
+
+UI revision 4 / DLL file version 0.6.0.4. C# regression execution and the full Windows/AutoCAD build remain unverified because no compiler or AutoCAD is available. Perform the actual log/image test, enter Point 1 manually, clear it and check Create points is blocked, then test Renumber from Start and CSV export. Keep PR unmerged pending user validation.

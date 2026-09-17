@@ -278,7 +278,7 @@ namespace OCR2Geometry.OCR
             // Prefer complete, consistently structured coordinate rows, not the most digits.
             var parsed = TextCoordinateParser.ParseOcr(text, 1, expectedColumns, numbered);
             return parsed.Points.Count * 1000 - parsed.InvalidLineNumbers.Count * 100
-                - parsed.RecoveredDecimalCount * 10;
+                - parsed.RecoveredDecimalCount * 10 - parsed.Points.Count(p => p.IsNumberMissing) * 20;
         }
 
         private static string PrepareForOcr(string sourcePath, bool removeGrid, bool threshold = true)

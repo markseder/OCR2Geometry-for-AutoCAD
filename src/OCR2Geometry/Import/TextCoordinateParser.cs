@@ -12,6 +12,7 @@ namespace OCR2Geometry.Import
         public List<CoordinatePoint> Points { get; } = new List<CoordinatePoint>();
         public List<string> InvalidLineDetails { get; } = new List<string>();
         public List<int> InvalidLineNumbers { get; } = new List<int>();
+        public List<string> ReviewDetails { get; } = new List<string>();
         public int RecoveredDecimalCount { get; set; }
     }
 
@@ -50,7 +51,7 @@ namespace OCR2Geometry.Import
 
             for (var i = 0; i < lines.Length; i++)
             {
-                var line = lines[i].Trim();
+                var line = recoverOcrDecimals ? lines[i].Trim(' ') : lines[i].Trim();
                 if (string.IsNullOrWhiteSpace(line))
                 {
                     continue;
@@ -62,7 +63,7 @@ namespace OCR2Geometry.Import
                     continue;
                 }
 
-                var values = recoverOcrDecimals ? ExtractOcrValues(line) : ExtractValues(line);
+                var values = recoverOcrDecimals ? GetOcrValues(line, expectedColumns, numbered) : ExtractValues(line);
                 if (recoverOcrDecimals && values.Count != expectedColumns)
                 {
                     result.InvalidLineNumbers.Add(i + 1);
@@ -78,12 +79,7 @@ namespace OCR2Geometry.Import
 
                 var explicitNumber = 0;
                 var hasExplicitNumber = recoverOcrDecimals ? numbered : HasExplicitPointNumber(values, out explicitNumber);
-                if (recoverOcrDecimals && numbered && !TryParseInt(values[0], out explicitNumber))
-                {
-                    result.InvalidLineNumbers.Add(i + 1);
-                    result.InvalidLineDetails.Add("Line " + (i + 1) + ": " + line + " — Point is missing or is not a whole number: " + values[0]);
-                    continue;
-                }
+                var numberMissing = recoverOcrDecimals && numbered && !TryParseInt(values[0], out explicitNumber);
                 var xIndex = hasExplicitNumber ? 1 : 0;
                 var yIndex = hasExplicitNumber ? 2 : 1;
                 var zIndex = hasExplicitNumber ? 3 : 2;
@@ -130,7 +126,7 @@ namespace OCR2Geometry.Import
                     continue;
                 }
 
-                var number = hasExplicitNumber ? explicitNumber : nextNumber;
+                int? number = numberMissing ? (int?)null : hasExplicitNumber ? explicitNumber : nextNumber;
                 var point = new CoordinatePoint(number, x, y, z)
                 {
                     IsXRecovered = xRecovered,
@@ -139,7 +135,8 @@ namespace OCR2Geometry.Import
                 };
 
                 result.Points.Add(point);
-                nextNumber = number + 1;
+                if (numberMissing) result.ReviewDetails.Add("Line " + (i + 1) + ": coordinates retained; enter Point manually.");
+                if (number.HasValue && number.Value < int.MaxValue) nextNumber = number.Value + 1;
             }
 
             return result;
@@ -162,7 +159,7 @@ namespace OCR2Geometry.Import
                     continue;
                 }
 
-                var values = ExtractOcrValues(line);
+                var values = GetOcrValues(line, expectedColumns, numbered);
                 if (values.Count != expectedColumns)
                 {
                     continue;
@@ -310,6 +307,17 @@ namespace OCR2Geometry.Import
             }
 
             return Math.Abs((long)pointNumber) < 100000;
+        }
+
+        private static List<string> GetOcrValues(string line, int expectedColumns, bool numbered)
+        {
+            var values = ExtractOcrValues(line);
+            int ignored;
+            // Only unambiguous decimal-leading text rows may omit Point.
+            // A leading integer could be Point with a missing coordinate: do not shift it.
+            if (numbered && !line.Contains("\t") && values.Count == expectedColumns - 1
+                && values.Count > 0 && !TryParseInt(values[0], out ignored)) values.Insert(0, "?");
+            return values;
         }
 
         private static List<string> ExtractOcrValues(string line)

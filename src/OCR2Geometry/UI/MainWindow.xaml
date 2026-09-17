@@ -36,7 +36,7 @@
 
         <TextBlock Grid.Row="1"
                    Margin="0,6,0,12"
-                   Text="AutoCAD 2020 — local OCR v0.6.0 revision 3 (no Python)"
+                   Text="AutoCAD 2020 — local OCR v0.6.0 revision 4 (no Python)"
                    Foreground="Gray" />
 
         <Grid Grid.Row="2" Margin="0,0,0,12">
@@ -128,7 +128,18 @@
                     </Style>
                 </DataGrid.RowStyle>
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="Point" Binding="{Binding Number}" Width="85" IsReadOnly="True" />
+                    <DataGridTextColumn Header="Point" Binding="{Binding Number, UpdateSourceTrigger=LostFocus, ValidatesOnExceptions=True}" Width="85">
+                        <DataGridTextColumn.CellStyle>
+                            <Style TargetType="DataGridCell">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsNumberMissing}" Value="True">
+                                        <Setter Property="Background" Value="#FFFFB4A2" />
+                                        <Setter Property="ToolTip" Value="Point was not recognized. Enter a whole number or use Renumber from Start." />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGridTextColumn.CellStyle>
+                    </DataGridTextColumn>
 
                     <DataGridTextColumn Header="X" Binding="{Binding X, UpdateSourceTrigger=LostFocus}" Width="*">
                         <DataGridTextColumn.CellStyle>
@@ -220,6 +231,7 @@
 
             <Button Grid.Column="0" Width="150" Height="36" Margin="0,0,8,0" Content="Create points" Click="CreatePoints_Click" />
             <Button Grid.Column="1" Width="120" Height="36" Content="Export CSV" Click="ExportCsv_Click" />
+            <Button Grid.Column="2" Width="165" Height="36" HorizontalAlignment="Left" Margin="8,0,0,0" Content="Renumber from Start" Click="Renumber_Click" ToolTip="Replace ALL point numbers in current displayed row order, starting at Start number" />
             <Button Grid.Column="3" Width="90" Height="36" Content="Close" IsCancel="True" />
         </Grid>
     </Grid>

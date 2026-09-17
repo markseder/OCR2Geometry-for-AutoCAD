@@ -229,7 +229,7 @@ namespace OCR2Geometry.UI
             if (isOcr)
             {
                 _ocrDetails += "\r\nParsing: " + result.Points.Count + " accepted; " + result.InvalidLineNumbers.Count + " skipped.\r\n"
-                    + string.Join("\r\n", result.InvalidLineDetails);
+                    + string.Join("\r\n", result.InvalidLineDetails) + "\r\n" + string.Join("\r\n", result.ReviewDetails);
             }
 
             if (result.Points.Count == 0)
@@ -252,6 +252,8 @@ namespace OCR2Geometry.UI
             var recoveryText = result.RecoveredDecimalCount > 0
                 ? "; recovered decimal separators: " + result.RecoveredDecimalCount
                 : string.Empty;
+            var missingNumbers = Points.Count(p => p.IsNumberMissing);
+            if (missingNumbers > 0) recoveryText += "; enter Point for " + missingNumbers + " row(s)";
             if (isOcr) recoveryText += "; verify highlighted OCR rows";
 
             if (result.InvalidLineNumbers.Count > 0)
@@ -295,7 +297,7 @@ namespace OCR2Geometry.UI
 
         private void SwapXY_Click(object sender, RoutedEventArgs e)
         {
-            CommitGridEdits();
+            if (!CommitGridEdits()) return;
 
             foreach (var point in Points)
             {
@@ -341,13 +343,15 @@ namespace OCR2Geometry.UI
 
         private void CreatePoints_Click(object sender, RoutedEventArgs e)
         {
-            CommitGridEdits();
+            if (!CommitGridEdits()) return;
 
             if (Points.Count == 0)
             {
                 ShowError("The coordinate table is empty.");
                 return;
             }
+
+            if (!ValidatePointNumbers()) return;
 
             double textHeight;
             if (!TryParsePositiveDouble(TextHeightTextBox.Text, out textHeight))
@@ -373,13 +377,15 @@ namespace OCR2Geometry.UI
 
         private void ExportCsv_Click(object sender, RoutedEventArgs e)
         {
-            CommitGridEdits();
+            if (!CommitGridEdits()) return;
 
             if (Points.Count == 0)
             {
                 ShowError("The coordinate table is empty.");
                 return;
             }
+
+            if (!ValidatePointNumbers()) return;
 
             var dialog = new SaveFileDialog
             {
@@ -428,10 +434,34 @@ namespace OCR2Geometry.UI
             window.ShowDialog();
         }
 
-        private void CommitGridEdits()
+        private bool CommitGridEdits()
         {
-            PointsGrid.CommitEdit(DataGridEditingUnit.Cell, true);
-            PointsGrid.CommitEdit(DataGridEditingUnit.Row, true);
+            if (PointsGrid.CommitEdit(DataGridEditingUnit.Cell, true) && PointsGrid.CommitEdit(DataGridEditingUnit.Row, true)) return true;
+            ShowError("Correct the invalid cell value before continuing.");
+            return false;
+        }
+
+        private bool ValidatePointNumbers()
+        {
+            if (!Points.Any(p => p.IsNumberMissing)) return true;
+            ShowError("Some Point numbers are empty. Enter them in the highlighted cells or click Renumber from Start.");
+            return false;
+        }
+
+        private void Renumber_Click(object sender, RoutedEventArgs e)
+        {
+            if (!CommitGridEdits()) return;
+            int start;
+            if (!TryGetStartNumber(out start)) return;
+            var displayed = PointsGrid.Items.Cast<CoordinatePoint>().ToList();
+            if ((long)start + displayed.Count - 1 > int.MaxValue)
+            {
+                ShowError("Numbering exceeds the maximum supported integer.");
+                return;
+            }
+            for (var i = 0; i < displayed.Count; i++) displayed[i].Number = start + i;
+            PointsGrid.Items.Refresh();
+            ImportStatusText.Text = displayed.Count + " point numbers replaced starting at " + start;
         }
 
         private bool TryGetStartNumber(out int startNumber, bool showError = true)
@@ -456,7 +486,8 @@ namespace OCR2Geometry.UI
                 return startNumber;
             }
 
-            return Points.Max(p => p.Number) + 1;
+            var maximum = Points.Where(p => p.Number.HasValue).Select(p => p.Number.Value).DefaultIfEmpty(startNumber - 1).Max();
+            return maximum < int.MaxValue ? maximum + 1 : startNumber;
         }
 
         private static bool TryParsePositiveDouble(string value, out double result)
