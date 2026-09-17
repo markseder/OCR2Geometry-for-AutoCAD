@@ -71,8 +71,6 @@ namespace OCR2Geometry.OCR
                         }
                     }
 
-                    // If aggressive preprocessing removed too much information,
-                    // retry the original screenshot in sparse-text mode.
                     if (string.IsNullOrWhiteSpace(bestText))
                     {
                         using (var image = Pix.LoadFromFile(imagePath))
@@ -96,7 +94,6 @@ namespace OCR2Geometry.OCR
                 }
                 catch
                 {
-                    // Temporary OCR images can be cleaned by Windows later.
                 }
             }
         }
@@ -157,7 +154,7 @@ namespace OCR2Geometry.OCR
                         GraphicsUnit.Pixel,
                         attributes);
 
-                    prepared.Save(targetPath, ImageFormat.Png);
+                    prepared.Save(targetPath, System.Drawing.Imaging.ImageFormat.Png);
                 }
             }
 
