@@ -49,25 +49,60 @@ namespace OCR2Geometry.Import
                     continue;
                 }
 
-                double x;
-                double y;
                 var explicitNumber = 0;
-                var hasExplicitNumber = values.Count >= 3 && TryParseInt(values[0], out explicitNumber);
+                var hasExplicitNumber = HasExplicitPointNumber(values, out explicitNumber);
                 var xIndex = hasExplicitNumber ? 1 : 0;
                 var yIndex = hasExplicitNumber ? 2 : 1;
+                var zIndex = hasExplicitNumber ? 3 : 2;
 
+                if (values.Count <= yIndex)
+                {
+                    result.InvalidLineNumbers.Add(i + 1);
+                    continue;
+                }
+
+                double x;
+                double y;
                 if (!TryParseDouble(values[xIndex], out x) || !TryParseDouble(values[yIndex], out y))
                 {
                     result.InvalidLineNumbers.Add(i + 1);
                     continue;
                 }
 
+                var z = 0.0;
+                if (values.Count > zIndex && !TryParseDouble(values[zIndex], out z))
+                {
+                    result.InvalidLineNumbers.Add(i + 1);
+                    continue;
+                }
+
                 var number = hasExplicitNumber ? explicitNumber : nextNumber;
-                result.Points.Add(new CoordinatePoint(number, x, y));
+                result.Points.Add(new CoordinatePoint(number, x, y, z));
                 nextNumber = number + 1;
             }
 
             return result;
+        }
+
+        private static bool HasExplicitPointNumber(List<string> values, out int pointNumber)
+        {
+            pointNumber = 0;
+            if (values.Count < 3 || !TryParseInt(values[0], out pointNumber))
+            {
+                return false;
+            }
+
+            // Four values naturally map to Point,X,Y,Z.
+            if (values.Count >= 4)
+            {
+                return true;
+            }
+
+            // Three values are ambiguous: they can be Point,X,Y or X,Y,Z.
+            // Treat a reasonably sized leading integer as a point number; large
+            // coordinate-like values are treated as X so XYZ rows without point
+            // numbers also work in the common surveying case.
+            return Math.Abs((long)pointNumber) < 100000;
         }
 
         private static List<string> ExtractValues(string line)
@@ -88,9 +123,9 @@ namespace OCR2Geometry.Import
                     .ToList();
             }
 
-            // CSV exported by this plugin uses commas as separators. Treat any compact
-            // line with two or more commas and no whitespace as CSV, even when values
-            // are integers such as "102,0,0".
+            // CSV exported by this plugin uses commas as separators. Treat compact
+            // lines with at least two commas and no whitespace as CSV. This keeps
+            // rows such as 102,0,0 and 102,0,0,0 unambiguous.
             var commaCount = line.Count(c => c == ',');
             if (commaCount >= 2 && !line.Any(char.IsWhiteSpace))
             {
@@ -100,7 +135,7 @@ namespace OCR2Geometry.Import
                     .ToList();
             }
 
-            // Whitespace-separated text can use either decimal dots or decimal commas.
+            // Whitespace-separated OCR/text can use either decimal dots or decimal commas.
             return NumberRegex.Matches(line).Cast<Match>().Select(m => m.Value).ToList();
         }
 
