@@ -134,7 +134,10 @@ namespace OCR2Geometry.UI
                     return;
                 }
 
-                ImportCoordinateText(result.Text, Path.GetFileName(_selectedImagePath) + " / " + result.EngineName);
+                ImportCoordinateText(
+                    result.Text,
+                    Path.GetFileName(_selectedImagePath) + " / " + result.EngineName,
+                    true);
             }
             catch (Exception ex)
             {
@@ -205,7 +208,7 @@ namespace OCR2Geometry.UI
             ImportStatusText.Text = "Table cleared";
         }
 
-        private void ImportCoordinateText(string text, string sourceName)
+        private void ImportCoordinateText(string text, string sourceName, bool isOcr = false)
         {
             int startNumber;
             if (!TryGetStartNumber(out startNumber))
@@ -213,7 +216,10 @@ namespace OCR2Geometry.UI
                 return;
             }
 
-            var result = TextCoordinateParser.Parse(text, startNumber);
+            var result = isOcr
+                ? TextCoordinateParser.ParseOcr(text, startNumber)
+                : TextCoordinateParser.Parse(text, startNumber);
+
             if (result.Points.Count == 0)
             {
                 ShowError("No coordinate rows were recognized in " + sourceName + ".");
@@ -228,6 +234,10 @@ namespace OCR2Geometry.UI
 
             PointsGrid.Items.Refresh();
 
+            var recoveryText = result.RecoveredDecimalCount > 0
+                ? "; recovered decimal separators: " + result.RecoveredDecimalCount
+                : string.Empty;
+
             if (result.InvalidLineNumbers.Count > 0)
             {
                 var preview = string.Join(", ", result.InvalidLineNumbers.Take(8));
@@ -236,11 +246,11 @@ namespace OCR2Geometry.UI
                     preview += ", ...";
                 }
 
-                ImportStatusText.Text = Points.Count + " imported; skipped lines: " + preview;
+                ImportStatusText.Text = Points.Count + " imported; skipped lines: " + preview + recoveryText;
             }
             else
             {
-                ImportStatusText.Text = Points.Count + " coordinate rows imported from " + sourceName;
+                ImportStatusText.Text = Points.Count + " coordinate rows imported from " + sourceName + recoveryText;
             }
         }
 
