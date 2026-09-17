@@ -17,13 +17,26 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <TextBlock Text="OCR2Geometry"
-                   FontSize="26"
-                   FontWeight="SemiBold" />
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Text="OCR2Geometry"
+                       FontSize="26"
+                       FontWeight="SemiBold" />
+
+            <Button Grid.Column="1"
+                    Width="120"
+                    Height="30"
+                    Content="About / Donate"
+                    Click="AboutDonate_Click" />
+        </Grid>
 
         <TextBlock Grid.Row="1"
                    Margin="0,6,0,12"
-                   Text="AutoCAD 2020 — local OCR v0.4.1 (no Python)"
+                   Text="AutoCAD 2020 — local OCR v0.5.0 (no Python)"
                    Foreground="Gray" />
 
         <Grid Grid.Row="2" Margin="0,0,0,12">
