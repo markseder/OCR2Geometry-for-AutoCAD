@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media.Imaging;
 using Microsoft.Win32;
 using OCR2Geometry.AutoCAD;
@@ -286,9 +287,41 @@ namespace OCR2Geometry.UI
                 var x = point.X;
                 point.X = point.Y;
                 point.Y = x;
+
+                var recovered = point.IsXRecovered;
+                point.IsXRecovered = point.IsYRecovered;
+                point.IsYRecovered = recovered;
             }
 
             PointsGrid.Items.Refresh();
+        }
+
+        private void PointsGrid_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+        {
+            if (e.EditAction != DataGridEditAction.Commit)
+            {
+                return;
+            }
+
+            var point = e.Row.Item as CoordinatePoint;
+            if (point == null)
+            {
+                return;
+            }
+
+            var header = e.Column.Header as string;
+            if (string.Equals(header, "X", StringComparison.Ordinal))
+            {
+                point.IsXRecovered = false;
+            }
+            else if (string.Equals(header, "Y", StringComparison.Ordinal))
+            {
+                point.IsYRecovered = false;
+            }
+            else if (string.Equals(header, "Z", StringComparison.Ordinal))
+            {
+                point.IsZRecovered = false;
+            }
         }
 
         private void CreatePoints_Click(object sender, RoutedEventArgs e)
@@ -364,8 +397,8 @@ namespace OCR2Geometry.UI
 
         private void CommitGridEdits()
         {
-            PointsGrid.CommitEdit(System.Windows.Controls.DataGridEditingUnit.Cell, true);
-            PointsGrid.CommitEdit(System.Windows.Controls.DataGridEditingUnit.Row, true);
+            PointsGrid.CommitEdit(DataGridEditingUnit.Cell, true);
+            PointsGrid.CommitEdit(DataGridEditingUnit.Row, true);
         }
 
         private bool TryGetStartNumber(out int startNumber, bool showError = true)
