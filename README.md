@@ -4,7 +4,7 @@ OCR2Geometry for AutoCAD is a lightweight AutoCAD plugin that converts coordinat
 
 The first target is **AutoCAD 2020**, using **C# / .NET Framework / WPF**.
 
-## Current development build — v0.7.0 candidate
+## Current development build — v0.8.0 candidate
 
 Already working and validated in AutoCAD 2020:
 
@@ -113,7 +113,7 @@ C:\Program Files\Autodesk\AutoCAD 2020\accoremgd.dll
 
 ## Status
 
-Active development. v0.6.0 revision 4 is validated by the user and merged into `main`; v0.7.0 is pending AutoCAD 2020 validation.
+Active development. v0.7.0 is validated by the user and merged into `main`; v0.8.0 is pending AutoCAD 2020 validation.
 
 
 ## v0.6.0 OCR candidate
@@ -203,3 +203,15 @@ The contour requires at least three distinct positions. Exact consecutive duplic
 Validation available here: static source/markup/handler checks and git diff --check. Full .NET Framework/WPF/AutoCAD compilation and runtime tests are not available in the editing environment.
 
 AutoCAD 2020 acceptance: rebuild and restart before NETLOAD; verify version 0.7.0; check the recovered-decimal tooltip; with checkbox off verify only points/labels; with checkbox on verify a square at Z=0, a square at common nonzero Z and a contour with varying Z; verify Closed=Yes and last-to-first edge; sort table and verify displayed order; test repeated closing point and fewer than three distinct positions (no partial creation). Confirm blank Point still blocks creation and OCR/CSV/About remain functional. Do not merge before user approval.
+
+## v0.8.0 — output layers, independent objects and row order
+
+- Independent Points, Labels and Polyline checkboxes. Points and Labels default on, Polyline off. Create objects generates only selected types.
+- Exact output layers: Points for DBPoint, Labels for DBText, Polyline for either lightweight or 3D polylines. Missing layers are created only for selected types. Existing layer settings and current drawing layer are preserved. A locked target layer raises a clear error; the transaction rolls back without partial objects/layers. Existing off/frozen layers remain off/frozen.
+- Closed toggles last-to-first closure. Open polylines need 2 distinct positions; closed ones need 3. Equal Z produces a lightweight polyline at that elevation, varying Z a 3D polyline. In open mode an explicitly repeated last vertex is retained.
+- Move up / Move down supports multiple selected rows and preserves their relative order. It first captures displayed order, clears sort descriptors and moves the selection one row where possible. Point numbers and coordinates do not change. The contour follows the resulting displayed order.
+- Missing Point numbers block Labels, but do not prevent Points-only or Polyline-only creation. Text-height validation applies only when Labels is checked. CSV still requires Point numbers.
+
+Validation: static markup/handler/name checks and git diff --check. No C# compiler, Windows WPF or AutoCAD runtime is available, so compilation and interactive behavior remain unverified.
+
+AutoCAD 2020 acceptance: rebuild/restart/NETLOAD; verify v0.8.0; test each output alone and all together, checking exact entity layers with Properties; use a nonzero current layer; repeat using existing layers and a locked layer (no partial output). Test open two-point and closed three-point paths, equal/varying Z, repeated end vertex, invalid minimum sizes, all checkboxes off, and missing Point with Labels on/off. Move one row and contiguous/disjoint selections both ways, including top/bottom and a sorted grid; verify numbers stay unchanged and contour follows visible order. Check default window and minimum width, OCR/import/export/About. Keep unmerged until user approval.

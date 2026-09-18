@@ -36,7 +36,7 @@
 
         <TextBlock Grid.Row="1"
                    Margin="0,6,0,12"
-                   Text="AutoCAD 2020 — local OCR v0.7.0 (no Python)"
+                   Text="AutoCAD 2020 — local OCR v0.8.0 (no Python)"
                    Foreground="Gray" />
 
         <Grid Grid.Row="2" Margin="0,0,0,12">
@@ -197,29 +197,17 @@
             </Border>
         </Grid>
 
-        <Grid Grid.Row="4" Margin="0,0,0,12">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="22" />
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="22" />
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-
-            <Button Grid.Column="0" Width="90" Height="30" Margin="0,0,8,0" Content="Add row" Click="AddRow_Click" />
-            <Button Grid.Column="1" Width="110" Height="30" Margin="0,0,8,0" Content="Delete selected" Click="DeleteSelected_Click" />
-            <Button Grid.Column="2" Width="90" Height="30" Content="Swap X/Y" Click="SwapXY_Click" />
-
-            <TextBlock Grid.Column="4" VerticalAlignment="Center" Text="Start number:" Margin="0,0,6,0" />
-            <TextBox x:Name="StartNumberTextBox" Grid.Column="5" Width="60" Height="26" Text="1" VerticalContentAlignment="Center" />
-
-            <TextBlock Grid.Column="7" VerticalAlignment="Center" Text="Text height:" Margin="0,0,6,0" />
-            <TextBox x:Name="TextHeightTextBox" Grid.Column="8" Width="65" Height="26" Text="2.5" VerticalContentAlignment="Center" />
-        </Grid>
+        <WrapPanel Grid.Row="4" Margin="0,0,0,12">
+            <Button Width="85" Height="30" Margin="0,0,8,6" Content="Add row" Click="AddRow_Click" />
+            <Button Width="105" Height="30" Margin="0,0,8,6" Content="Delete selected" Click="DeleteSelected_Click" />
+            <Button Width="85" Height="30" Margin="0,0,8,6" Content="Swap X/Y" Click="SwapXY_Click" />
+            <Button Width="85" Height="30" Margin="0,0,8,6" Content="Move up" Click="MoveUp_Click" ToolTip="Move selected rows up. Current visible order becomes the manual order; sorting is cleared. Point numbers stay unchanged." />
+            <Button Width="85" Height="30" Margin="0,0,16,6" Content="Move down" Click="MoveDown_Click" ToolTip="Move selected rows down. Current visible order becomes the manual order; sorting is cleared. Point numbers stay unchanged." />
+            <TextBlock VerticalAlignment="Center" Text="Start number:" Margin="0,0,6,6" />
+            <TextBox x:Name="StartNumberTextBox" Width="60" Height="26" Text="1" Margin="0,0,16,6" VerticalContentAlignment="Center" />
+            <TextBlock VerticalAlignment="Center" Text="Text height:" Margin="0,0,6,6" />
+            <TextBox x:Name="TextHeightTextBox" Width="65" Height="26" Text="2.5" Margin="0,0,0,6" VerticalContentAlignment="Center" IsEnabled="{Binding IsChecked, ElementName=CreateLabelsCheckBox}" />
+        </WrapPanel>
 
         <Grid Grid.Row="5">
             <Grid.RowDefinitions>
@@ -233,10 +221,14 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <CheckBox Grid.Row="0" Grid.ColumnSpan="4" x:Name="CreateContourCheckBox"
-                      Content="Create closed polyline" IsChecked="False" Margin="0,0,0,10"
-                      ToolTip="Connect points in displayed row order and close last to first. Equal Z: 2D polyline at that elevation. Different Z: 3D polyline. At least 3 distinct positions required." />
-            <Button Grid.Row="1" Grid.Column="0" Width="150" Height="36" Margin="0,0,8,0" Content="Create points" Click="CreatePoints_Click" />
+            <WrapPanel Grid.Row="0" Grid.ColumnSpan="4" Margin="0,0,0,10">
+                <TextBlock Text="Create:" VerticalAlignment="Center" Margin="0,0,12,0" />
+                <CheckBox x:Name="CreatePointsCheckBox" Content="Points" IsChecked="True" Margin="0,0,18,0" ToolTip="Create point entities on the Points layer." />
+                <CheckBox x:Name="CreateLabelsCheckBox" Content="Labels" IsChecked="True" Margin="0,0,18,0" ToolTip="Create point-number text on the Labels layer. All Point numbers must be filled." />
+                <CheckBox x:Name="CreateContourCheckBox" Content="Polyline" IsChecked="False" Margin="0,0,18,0" ToolTip="Create a polyline on the Polyline layer in displayed row order. Equal Z: 2D at that elevation; different Z: 3D." />
+                <CheckBox x:Name="CloseContourCheckBox" Content="Closed" IsChecked="True" IsEnabled="{Binding IsChecked, ElementName=CreateContourCheckBox}" ToolTip="Checked: connect last vertex to first (at least 3 distinct positions). Unchecked: open polyline (at least 2)." />
+            </WrapPanel>
+            <Button Grid.Row="1" Grid.Column="0" Width="150" Height="36" Margin="0,0,8,0" Content="Create objects" Click="CreatePoints_Click" />
             <Button Grid.Row="1" Grid.Column="1" Width="120" Height="36" Content="Export CSV" Click="ExportCsv_Click" />
             <Button Grid.Row="1" Grid.Column="2" Width="165" Height="36" HorizontalAlignment="Left" Margin="8,0,0,0" Content="Renumber from Start" Click="Renumber_Click" ToolTip="Replace ALL point numbers in current displayed row order, starting at Start number" />
             <Button Grid.Row="1" Grid.Column="3" Width="90" Height="36" Content="Close" IsCancel="True" />
