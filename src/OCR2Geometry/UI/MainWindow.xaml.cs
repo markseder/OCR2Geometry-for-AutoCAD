@@ -1,5 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -295,6 +296,36 @@ namespace OCR2Geometry.UI
             PointsGrid.Items.Refresh();
         }
 
+        private void MoveUp_Click(object sender, RoutedEventArgs e) { MoveRows(true); }
+        private void MoveDown_Click(object sender, RoutedEventArgs e) { MoveRows(false); }
+
+        private void MoveRows(bool up)
+        {
+            if (!CommitGridEdits()) return;
+            var selected = new HashSet<CoordinatePoint>(PointsGrid.SelectedItems.Cast<CoordinatePoint>());
+            if (selected.Count == 0) return;
+            var ordered = PointsGrid.Items.Cast<CoordinatePoint>().ToList();
+            if (up)
+            {
+                for (var i = 1; i < ordered.Count; i++)
+                    if (selected.Contains(ordered[i]) && !selected.Contains(ordered[i - 1]))
+                    { var previous = ordered[i - 1]; ordered[i - 1] = ordered[i]; ordered[i] = previous; }
+            }
+            else
+            {
+                for (var i = ordered.Count - 2; i >= 0; i--)
+                    if (selected.Contains(ordered[i]) && !selected.Contains(ordered[i + 1]))
+                    { var next = ordered[i + 1]; ordered[i + 1] = ordered[i]; ordered[i] = next; }
+            }
+            PointsGrid.Items.SortDescriptions.Clear();
+            foreach (var column in PointsGrid.Columns) column.SortDirection = null;
+            Points.Clear();
+            foreach (var point in ordered) Points.Add(point);
+            foreach (var point in ordered.Where(selected.Contains)) PointsGrid.SelectedItems.Add(point);
+            PointsGrid.ScrollIntoView(ordered.First(selected.Contains));
+            ImportStatusText.Text = "Manual row order updated; point numbers unchanged.";
+        }
+
         private void SwapXY_Click(object sender, RoutedEventArgs e)
         {
             if (!CommitGridEdits()) return;
@@ -351,10 +382,18 @@ namespace OCR2Geometry.UI
                 return;
             }
 
-            if (!ValidatePointNumbers()) return;
-
-            double textHeight;
-            if (!TryParsePositiveDouble(TextHeightTextBox.Text, out textHeight))
+            var createPoints = CreatePointsCheckBox.IsChecked == true;
+            var createLabels = CreateLabelsCheckBox.IsChecked == true;
+            var createContour = CreateContourCheckBox.IsChecked == true;
+            var closed = CloseContourCheckBox.IsChecked == true;
+            if (!createPoints && !createLabels && !createContour)
+            {
+                ShowError("Select Points, Labels or Polyline before creating objects.");
+                return;
+            }
+            if (createLabels && !ValidatePointNumbers()) return;
+            double textHeight = 2.5;
+            if (createLabels && !TryParsePositiveDouble(TextHeightTextBox.Text, out textHeight))
             {
                 ShowError("Text height must be a positive number.");
                 return;
@@ -363,10 +402,13 @@ namespace OCR2Geometry.UI
             try
             {
                 var displayed = PointsGrid.Items.Cast<CoordinatePoint>().ToList();
-                var createContour = CreateContourCheckBox.IsChecked == true;
-                PointCreator.CreatePoints(displayed, textHeight, textHeight, createContour);
+                PointCreator.CreatePoints(displayed, textHeight, textHeight, createContour, createPoints, createLabels, closed);
+                var created = new List<string>();
+                if (createPoints) created.Add(displayed.Count + " points on Points");
+                if (createLabels) created.Add(displayed.Count + " labels on Labels");
+                if (createContour) created.Add("1 " + (closed ? "closed" : "open") + " polyline on Polyline");
                 MessageBox.Show(
-                    Points.Count + " point(s) and labels" + (createContour ? " and a closed polyline" : string.Empty) + " were created in Model Space.",
+                    "Created in Model Space: " + string.Join(", ", created) + ".",
                     "OCR2Geometry",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
