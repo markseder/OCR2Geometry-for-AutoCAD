@@ -26,6 +26,13 @@ namespace OCR2Geometry.OCR
 
         public TesseractOcrEngine()
         {
+            var bundledData = Path.Combine(Path.GetDirectoryName(typeof(TesseractOcrEngine).Assembly.Location), "tessdata");
+            var bundledModel = Path.Combine(bundledData, Language + ".traineddata");
+            if (File.Exists(bundledModel) && new FileInfo(bundledModel).Length > 1000000)
+            {
+                _tessdataDirectory = bundledData;
+                return;
+            }
             _tessdataDirectory = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "OCR2Geometry",
@@ -397,7 +404,6 @@ namespace OCR2Geometry.OCR
 
         private void EnsureLanguageData()
         {
-            Directory.CreateDirectory(_tessdataDirectory);
             var trainedDataPath = Path.Combine(_tessdataDirectory, Language + ".traineddata");
 
             if (File.Exists(trainedDataPath) && new FileInfo(trainedDataPath).Length > 1000000)
@@ -407,6 +413,7 @@ namespace OCR2Geometry.OCR
 
             try
             {
+                Directory.CreateDirectory(_tessdataDirectory);
                 ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
                 using (var client = new WebClient())
                 {

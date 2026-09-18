@@ -4,7 +4,11 @@ OCR2Geometry for AutoCAD is a lightweight AutoCAD plugin that converts coordinat
 
 The first target is **AutoCAD 2020**, using **C# / .NET Framework / WPF**.
 
-## Current development build — v0.8.0 candidate
+## Current development build — v0.9.0 candidate
+
+The tested v0.8.0 is merged into `main`. Version 0.9.0 adds a Windows installer and command autoload bundle; installation testing is pending.
+
+See [installation and installer build instructions](installer/INSTALL.md). Developers can run `Build-Installer.cmd` on Windows to produce the distributable EXE.
 
 Already working and validated in AutoCAD 2020:
 
@@ -113,7 +117,9 @@ C:\Program Files\Autodesk\AutoCAD 2020\accoremgd.dll
 
 ## Status
 
-Active development. v0.7.0 is validated by the user and merged into `main`; v0.8.0 is pending AutoCAD 2020 validation.
+Active development. v0.8.0 is validated by the user and merged into `main`; v0.9.0 installer validation is pending.
+
+The sections below are historical development notes; their pending-test statements describe the time those versions were developed.
 
 
 ## v0.6.0 OCR candidate
@@ -215,3 +221,13 @@ AutoCAD 2020 acceptance: rebuild and restart before NETLOAD; verify version 0.7.
 Validation: static markup/handler/name checks and git diff --check. No C# compiler, Windows WPF or AutoCAD runtime is available, so compilation and interactive behavior remain unverified.
 
 AutoCAD 2020 acceptance: rebuild/restart/NETLOAD; verify v0.8.0; test each output alone and all together, checking exact entity layers with Properties; use a nonzero current layer; repeat using existing layers and a locked layer (no partial output). Test open two-point and closed three-point paths, equal/varying Z, repeated end vertex, invalid minimum sizes, all checkboxes off, and missing Point with Labels on/off. Move one row and contiguous/disjoint selections both ways, including top/bottom and a sorted grid; verify numbers stay unchanged and contour follows visible order. Check default window and minimum width, OCR/import/export/About. Keep unmerged until user approval.
+
+## v0.9.0 — installer and AutoCAD command autoload
+
+- Inno Setup EXE source and `Build-Installer.cmd` build entry point.
+- AutoCAD 2020 x64 bundle installed under Program Files; run `OCR2GEOMETRY` without NETLOAD.
+- Bundled English OCR model and native libraries; shared Microsoft VC++ runtime prerequisite included in setup.
+- Setup/uninstall requires AutoCAD to be closed and preserves drawings and user data.
+- Bundle validation rejects missing required files, wrong assembly versions and Autodesk reference DLLs.
+
+Validation performed: PowerShell scripts parsed successfully; 26 existing parser regression checks passed using the actual C# sources on .NET 8 in Linux. Bundle validator exercised with a synthetic assembly/file fixture, including rejection of Autodesk DLLs and a missing model. This does **not** validate a real plugin bundle. Full .NET Framework/WPF build, Inno Setup compilation, runtime prerequisite installation, command autoload and uninstall still require Windows/AutoCAD 2020 testing. No built EXE is included in this PR.

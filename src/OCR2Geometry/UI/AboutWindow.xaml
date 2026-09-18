@@ -22,7 +22,7 @@
 
         <TextBlock Grid.Row="1"
                    Margin="0,4,0,16"
-                   Text="Version 0.8.0"
+                   Text="Version 0.9.0"
                    Foreground="Gray" />
 
         <StackPanel Grid.Row="2" Margin="0,0,0,16">
