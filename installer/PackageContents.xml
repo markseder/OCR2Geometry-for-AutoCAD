@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ApplicationPackage SchemaVersion="1.0" AutodeskProduct="AutoCAD" Name="OCR2Geometry" AppVersion="0.9.0" Description="Local coordinate table OCR and geometry creation" Author="Pavel Matveev" ProductCode="{B58826BE-E68B-4F35-A95E-90C34D200900}" UpgradeCode="{1BAFDE30-A4BA-4E44-A77D-F73DF8E26F6A}">
+  <CompanyDetails Name="Pavel Matveev" Email="pavelmatveev84@gmail.com" Url="https://github.com/markseder/OCR2Geometry-for-AutoCAD" />
+  <Components>
+    <RuntimeRequirements OS="Win64" Platform="AutoCAD*" SeriesMin="R23.1" SeriesMax="R23.1" />
+    <ComponentEntry AppName="OCR2Geometry" Version="0.9.0" ModuleName="./Contents/Windows/OCR2Geometry.dll" AppType=".Net" LoadOnCommandInvocation="True">
+      <Commands GroupName="OCR2Geometry"><Command Global="OCR2GEOMETRY" Local="OCR2GEOMETRY" /></Commands>
+    </ComponentEntry>
+  </Components>
+</ApplicationPackage>
