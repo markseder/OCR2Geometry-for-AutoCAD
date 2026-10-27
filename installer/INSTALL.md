@@ -5,7 +5,22 @@ AutoCAD LT and other AutoCAD releases are not supported by this package.
 
 ## For the end user
 
-1. Save drawings and close every AutoCAD process.
+**Before installing or updating, all AutoCAD processes must be stopped.** Closing the
+AutoCAD window alone may leave `acad.exe` running in the background. If setup says
+"Save your drawings and close AutoCAD before installing OCR2Geometry":
+
+- Save all open drawings and close AutoCAD.
+- Press **Ctrl + Shift + Esc**, open Task Manager > **Details**, and check for `acad.exe`.
+- After saving your work, end any remaining `acad.exe` processes.
+- Alternatively, **restart Windows and run the installer before opening AutoCAD**.
+
+**Перед установкой или обновлением обязательно завершите все процессы AutoCAD,
+включая фоновые `acad.exe`.** Закрытия окна может быть недостаточно. Сохраните
+чертежи, закройте AutoCAD и проверьте Диспетчер задач (Ctrl + Shift + Esc →
+«Подробности»). Завершите оставшиеся `acad.exe` либо перезагрузите компьютер
+и запустите установщик до открытия AutoCAD.
+
+1. Save drawings and make sure no AutoCAD processes remain running.
 2. Run `OCR2Geometry-0.9.0-Setup-x64.exe` and approve the Windows administrator prompt.
 3. Restart AutoCAD 2020 and run `OCR2GEOMETRY`.
 
