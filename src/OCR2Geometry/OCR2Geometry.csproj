@@ -58,6 +58,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="OCR\OcrColumnDetector.cs" />
     <Compile Include="Plugin.cs" />
     <Compile Include="Commands\OcrCommand.cs" />
     <Compile Include="AutoCAD\PointCreator.cs" />

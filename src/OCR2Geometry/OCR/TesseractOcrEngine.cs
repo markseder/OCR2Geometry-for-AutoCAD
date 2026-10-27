@@ -63,11 +63,26 @@ namespace OCR2Geometry.OCR
 
                     var diagnostics = new StringBuilder();
                     diagnostics.AppendLine("Requested mode: " + mode);
+                    var automaticColumns = expectedColumns == 0;
+                    if (automaticColumns)
+                    {
+                        using (var grid = new Bitmap(preparedPaths[1]))
+                        {
+                            var count = FindGridLines(grid, false).Count - 1;
+                            if (FindGridLines(grid, true).Count >= 2 && count >= 2 && count <= 4)
+                                expectedColumns = count;
+                        }
+                        // Three columns remain semantically ambiguous until the user chooses.
+                        numbered = expectedColumns == 4;
+                        diagnostics.AppendLine("Auto columns: grid count=" + expectedColumns);
+                    }
+                    if (mode == OcrMode.TableCells && expectedColumns == 0)
+                        return new OcrResult(string.Empty, Name, diagnostics + "No complete grid with 2 to 4 columns. Try Auto or Text mode.");
                     string cells = null;
-                    if (mode != OcrMode.Text)
+                    if (mode != OcrMode.Text && expectedColumns != 0)
                     {
                         cells = RecognizeCells(engine, preparedPaths[1], preparedPaths[2], expectedColumns, numbered, diagnostics);
-                        if (cells != null && mode == OcrMode.TableCells) return new OcrResult(cells, Name + " / Table cells", diagnostics.ToString());
+                        if (cells != null && mode == OcrMode.TableCells) return new OcrResult(cells, Name + " / Table cells", diagnostics.ToString(), expectedColumns);
                         if (mode == OcrMode.TableCells)
                             return new OcrResult(string.Empty, Name, diagnostics.ToString());
                         diagnostics.AppendLine("Auto: compare cell result with text recognition; never stop on an empty cell result.");
@@ -113,7 +128,7 @@ namespace OCR2Geometry.OCR
                     }
 
                     diagnostics.AppendLine("Auto/text selection: " + selectedMethod + "; score=" + bestScore);
-                    return new OcrResult(bestText, Name + " / " + selectedMethod, diagnostics.ToString());
+                    return new OcrResult(bestText, Name + " / " + selectedMethod, diagnostics.ToString(), expectedColumns == 0 ? OcrColumnDetector.Detect(bestText) : expectedColumns);
                 }
             }
             finally
@@ -277,6 +292,13 @@ namespace OCR2Geometry.OCR
 
         private static int ScoreText(string text, int expectedColumns, bool numbered)
         {
+            if (expectedColumns == 0)
+            {
+                var count = OcrColumnDetector.Detect(text);
+                if (count == 0) return int.MinValue + 1;
+                if (count == 3) return Math.Max(ScoreText(text, 3, true), ScoreText(text, 3, false));
+                return ScoreText(text, count, count == 4);
+            }
             if (string.IsNullOrWhiteSpace(text))
             {
                 return 0;

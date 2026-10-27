@@ -127,9 +127,11 @@ namespace OCR2Geometry.UI
                 _ocrDetails = string.Empty;
                 OcrDetailsButton.IsEnabled = false;
                 ImportStatusText.Text = "Recognizing image with " + _ocrEngine.Name + "...";
-                var result = _ocrEngine.Recognize(_selectedImagePath,
-                    OcrLayoutComboBox.SelectedIndex == 0 ? 4 : OcrLayoutComboBox.SelectedIndex == 3 ? 2 : 3,
-                    OcrLayoutComboBox.SelectedIndex <= 1, (OcrMode)OcrModeComboBox.SelectedIndex);
+                var layout = OcrLayoutComboBox.SelectedIndex;
+                var columns = layout == 0 ? 0 : layout == 1 ? 4 : layout == 4 ? 2 : 3;
+                var numbered = layout == 1 || layout == 2;
+                var result = _ocrEngine.Recognize(_selectedImagePath, columns,
+                    numbered, (OcrMode)OcrModeComboBox.SelectedIndex);
                 _ocrDetails = result.Diagnostics + "\r\nSelected OCR text:\r\n" + result.Text;
                 OcrDetailsButton.IsEnabled = true;
                 if (string.IsNullOrWhiteSpace(result.Text))
@@ -139,10 +141,32 @@ namespace OCR2Geometry.UI
                     return;
                 }
 
+                if (layout == 0)
+                {
+                    columns = result.ColumnCount;
+                    if (columns < 2 || columns > 4)
+                    {
+                        ImportStatusText.Text = "Could not determine columns. Select a column layout and retry.";
+                        ShowError("Could not determine the column count. Choose Point X Y, Point X Y Z, X Y or X Y Z above and retry.");
+                        return;
+                    }
+                    numbered = columns == 4;
+                    if (columns == 3 && !OcrColumnDetector.IsClearlyXyz(result.Text))
+                    {
+                        var choice = ChooseThreeColumnLayout(result.Text);
+                        if (!choice.HasValue)
+                        {
+                            ImportStatusText.Text = "Column selection cancelled; existing table unchanged.";
+                            return;
+                        }
+                        numbered = choice.Value;
+                    }
+                }
+                _ocrDetails += "\r\nColumns: " + (numbered ? "Point " : "") + (columns - (numbered ? 1 : 0) == 2 ? "X Y (Z = 0)" : "X Y Z");
                 ImportCoordinateText(
                     result.Text,
                     Path.GetFileName(_selectedImagePath) + " / " + result.EngineName,
-                    true);
+                    true, columns, numbered);
             }
             catch (Exception ex)
             {
@@ -207,13 +231,37 @@ namespace OCR2Geometry.UI
             }
         }
 
+        private bool? ChooseThreeColumnLayout(string text)
+        {
+            bool? numbered = null;
+            var dialog = new Window { Title = "Choose the meaning of 3 columns", Owner = this,
+                Width = 520, SizeToContent = SizeToContent.Height, ResizeMode = ResizeMode.NoResize,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner };
+            var panel = new System.Windows.Controls.StackPanel { Margin = new Thickness(20) };
+            panel.Children.Add(new System.Windows.Controls.TextBlock {
+                Text = "Three columns were found. What does the first column contain?\nA whole number can be either a point number or an X coordinate.",
+                TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 12) });
+            panel.Children.Add(new System.Windows.Controls.TextBox { Text = string.Join("\r\n", text.Split('\n').Where(l => !string.IsNullOrWhiteSpace(l)).Take(3)),
+                IsReadOnly = true, Margin = new Thickness(0, 0, 0, 12) });
+            var point = new System.Windows.Controls.Button { Content = "Point number + X + Y (Z = 0)", Margin = new Thickness(0, 0, 0, 8), Padding = new Thickness(8) };
+            point.Click += (s, e) => { numbered = true; dialog.DialogResult = true; };
+            panel.Children.Add(point);
+            var xyz = new System.Windows.Controls.Button { Content = "X + Y + Z (generate point numbers)", Margin = new Thickness(0, 0, 0, 8), Padding = new Thickness(8) };
+            xyz.Click += (s, e) => { numbered = false; dialog.DialogResult = true; };
+            panel.Children.Add(xyz);
+            panel.Children.Add(new System.Windows.Controls.Button { Content = "Cancel", IsCancel = true, Padding = new Thickness(8) });
+            dialog.Content = panel;
+            dialog.ShowDialog();
+            return numbered;
+        }
+
         private void ClearTable_Click(object sender, RoutedEventArgs e)
         {
             Points.Clear();
             ImportStatusText.Text = "Table cleared";
         }
 
-        private void ImportCoordinateText(string text, string sourceName, bool isOcr = false)
+        private void ImportCoordinateText(string text, string sourceName, bool isOcr = false, int columns = 4, bool numbered = true)
         {
             int startNumber;
             if (!TryGetStartNumber(out startNumber))
@@ -223,8 +271,7 @@ namespace OCR2Geometry.UI
 
             var result = isOcr
                 ? TextCoordinateParser.ParseOcr(text, startNumber,
-                    OcrLayoutComboBox.SelectedIndex == 0 ? 4 : OcrLayoutComboBox.SelectedIndex == 3 ? 2 : 3,
-                    OcrLayoutComboBox.SelectedIndex <= 1)
+                    columns, numbered)
                 : TextCoordinateParser.Parse(text, startNumber);
 
             if (isOcr)
@@ -255,7 +302,7 @@ namespace OCR2Geometry.UI
                 : string.Empty;
             var missingNumbers = Points.Count(p => p.IsNumberMissing);
             if (missingNumbers > 0) recoveryText += "; enter Point for " + missingNumbers + " row(s)";
-            if (isOcr) recoveryText += "; verify highlighted OCR rows";
+            if (isOcr) recoveryText += "; " + (numbered ? "Point + " : "") + (columns - (numbered ? 1 : 0) == 2 ? "X + Y; Z = 0" : "X + Y + Z") + "; verify highlighted OCR rows";
 
             if (result.InvalidLineNumbers.Count > 0)
             {
