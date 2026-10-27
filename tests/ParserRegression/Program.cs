@@ -12,6 +12,15 @@ internal static class Program
 
     private static void Main()
     {
+        Check(OcrColumnDetector.Detect("102 249480.98 -125960.85\n103 249383.87 -125900.28") == 3, "Three-column screenshot detected");
+        Check(OcrColumnDetector.Detect("1 252956,80 -128368,72 725,50\n2 250123,60 -124965,21 786,00") == 4, "Four columns detected");
+        Check(OcrColumnDetector.Detect("252956,80 -128368,72\n250123,60 -124965,21") == 2, "Two columns detected");
+        Check(OcrColumnDetector.Detect("4 246443 ,23 -125053,95") == 3, "Spaced decimal does not add a column");
+        Check(OcrColumnDetector.Detect("?\t246443.23\t-125053.95") == 3, "Unreadable cell retains its column");
+        Check(OcrColumnDetector.Detect("1 2\n3 4 5") == 0, "Tied column counts require manual layout");
+        Check(!OcrColumnDetector.IsClearlyXyz("102 249480.98 -125960.85\n103 249383.87 -125900.28"), "Integer first column requires choice");
+        Check(!OcrColumnDetector.IsClearlyXyz("250000 125000 7\n250001 125001 8"), "Sequential integer X cannot be guessed as Point");
+        Check(OcrColumnDetector.IsClearlyXyz("250000.5 125000 7\n250001.6 125001 8"), "Decimal X is unnumbered XYZ");
         Check(OcrReadingPolicy.Normalize("246443 ,23", false) == "246443.23", "Space before comma from user log");
         Check(OcrReadingPolicy.Normalize("--130579,86", false) == null, "Reject doubled sign");
         Check(OcrReadingPolicy.Normalize("246443 23", false) == null, "Do not join separated digits");

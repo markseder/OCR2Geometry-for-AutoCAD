@@ -231,3 +231,18 @@ AutoCAD 2020 acceptance: rebuild/restart/NETLOAD; verify v0.8.0; test each outpu
 - Bundle validation rejects missing required files, wrong assembly versions and Autodesk reference DLLs.
 
 Validation performed: PowerShell scripts parsed successfully; 26 existing parser regression checks passed using the actual C# sources on .NET 8 in Linux. Bundle validator exercised with a synthetic assembly/file fixture, including rejection of Autodesk DLLs and a missing model. This does **not** validate a real plugin bundle. Full .NET Framework/WPF build, Inno Setup compilation, runtime prerequisite installation, command autoload and uninstall still require Windows/AutoCAD 2020 testing. No built EXE is included in this PR.
+
+## Automatic OCR columns (v0.9.0 follow-up)
+
+`Columns: Auto` is now the default. Paste/select an image and click Recognize OCR:
+
+- A complete detected grid supplies the column count. Without a grid, the dominant numeric row width is used; ties require a manual layout.
+- Two columns mean X/Y with Z = 0; four columns mean Point/X/Y/Z.
+- Three columns with decimal values in the first field of every nonempty OCR row (at least two rows) are treated as X/Y/Z. Otherwise a dialog shows sample recognized rows and explicitly labelled Point/X/Y and X/Y/Z buttons. Cancel leaves the existing table unchanged.
+- Integer X coordinates, even sequential ones, are never automatically assumed to be point IDs. Numbered three-column tables therefore usually need one confirmation.
+- The result status reports the chosen columns and Z = 0 where applicable. All OCR rows still require source verification.
+- Explicit column layouts remain available. `Mode: Auto` independently selects the OCR recognition method. CSV/TXT parsing is unchanged.
+
+The numeric OCR whitelist does not read column headings; this version does not infer layout from header words. Crop unrelated content and use a manual layout for mixed-width or damaged tables.
+
+Windows acceptance: test the user's three-column numbered table, two-column XY, four-column Point/XYZ and three-column XYZ with integer X. Verify both dialog choices, Cancel, all manual layouts, and missing Point retention. Keep the follow-up unmerged until tested in AutoCAD 2020.
